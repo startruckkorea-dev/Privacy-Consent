@@ -696,7 +696,13 @@ async function loadAdminData() {
       const dt = f.SubmittedAt
         ? new Date(f.SubmittedAt).toLocaleString('ko-KR')
         : (dateFromTitle || '-');
-      const pdfUrl = f.SignatureFileUrl || '';
+      // SignatureFileUrl 없으면 이메일로 파일명 조합 (기존 데이터 대응)
+      let pdfUrl = f.SignatureFileUrl || '';
+      if (!pdfUrl && email) {
+        const safeName = email.replace(/[^a-z0-9]/gi, '_');
+        const dateStr = dateFromTitle || new Date().toISOString().substring(0,10);
+        pdfUrl = 'https://startruckkorea.sharepoint.com/sites/STK-DB/Shared%20Documents/PrivacyConsents/Signatures/Consent_' + safeName + '_' + dateStr + '.pdf';
+      }
 
       const dtShort = dt !== '-' ? dt.replace(/^\d{4}\. /,'').replace(/\. /,'/').replace(/\.$/,'') : '-';
 
