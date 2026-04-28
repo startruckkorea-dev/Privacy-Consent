@@ -645,15 +645,40 @@ async function submitForm() {
       r9:'고유식별정보 국외제공', r10:'최종 확인'
     };
     // 모든 데이터를 Title(제목) 하나에 저장 - 컬럼 추가 불필요
-    const consentSummary = Object.keys(labelDisplay).map(k =>
-      labelDisplay[k] + ': ' + (getVal(k)==='agree'?'동의':'미동의')
-    ).join(' | ');
+    // Title: 255자 이내 (SharePoint 제한)
+    const titleStr = ('[' + now.substring(0,10) + '] ' + user.email).substring(0, 255);
 
+    // 동의 결과 전체 텍스트 (multiline용)
+    const consentDetail = [
+      '제출자: ' + user.displayName + ' (' + user.email + ')',
+      '제출일시: ' + new Date(now).toLocaleString('ko-KR'),
+      '',
+      ...Object.keys(labelDisplay).map(k => (getVal(k)==='agree'?'[동의] ':'[미동의] ') + labelDisplay[k]),
+      '',
+      signFileUrl ? '서명파일: ' + signFileUrl : '서명파일: 없음'
+    ].join('\n');
+
+    // SharePoint multiline 텍스트 필드로 저장
     const fields = {
-      Title: '[' + now.substring(0,10) + '] ' + user.email + ' | ' + user.displayName + ' | ' + consentSummary + (signFileUrl ? ' | 서명:' + signFileUrl : '')
+      Title: titleStr,
+      ConsentDetail: consentDetail
     };
 
-    await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields });
+    // 1차 시도
+    let saved = false;
+    try {
+      await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields });
+      saved = true;
+    } catch(e1) {
+      // ConsentDetail 컬럼이 없으면 Title만으로 재시도
+      console.warn('ConsentDetail 저장 실패, Title만 저장:', e1.message);
+      try {
+        await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields: { Title: titleStr } });
+        saved = true;
+      } catch(e2) {
+        throw new Error(e2.message);
+      }
+    }
 
     // 완료 화면
     document.getElementById('form-body').style.display = 'none';
