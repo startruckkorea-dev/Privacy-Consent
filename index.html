@@ -673,17 +673,6 @@ async function submitForm() {
   loading(false);
 }
 
-
-  for (const name of needed) {
-    if (existing.includes(name)) continue;
-    try {
-      await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/columns', 'POST', {
-        name, text: { allowMultipleLines: false }
-      });
-      console.log('컬럼 생성:', name);
-    } catch(e) { console.warn('컬럼 생성 실패:', name, e.message); }
-  }
-}
 </script>
 </body>
 </html>
