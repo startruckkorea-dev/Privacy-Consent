@@ -686,21 +686,17 @@ async function loadAdminData() {
     for (const item of items) {
       const f = item.fields;
       // Title에서 이메일/이름 파싱 (ConsentDetail 없을 경우 대비)
-      // Title 형식: "[2026-04-28] email@..." 파싱
+      // Title 형식: "[2026-04-28] email@domain.com"
       const titleStr = f.Title || '';
-      const titleMatch = titleStr.match(/^\[([^\]]+)\]\s*(.+)/);
+      const titleMatch = titleStr.match(/^\[([^\]]+)\]\s*([^\s|]+)/);
       const dateFromTitle = titleMatch ? titleMatch[1] : '';
-      const emailFromTitle = titleMatch ? titleMatch[2].trim() : titleStr;
+      const emailFromTitle = titleMatch ? titleMatch[2].trim() : '';
       const name = f.EmployeeName || emailFromTitle.split('@')[0] || '-';
-      const email = f.EmployeeEmail || emailFromTitle;
+      const email = f.EmployeeEmail || emailFromTitle || '-';
       const dt = f.SubmittedAt
         ? new Date(f.SubmittedAt).toLocaleString('ko-KR')
-        : (dateFromTitle ? dateFromTitle : '-');
-      // Title에서 PDF URL 추출: "[날짜] email |PDF|url" 형식
-      let pdfUrl = f.SignatureFileUrl || '';
-      if (!pdfUrl && f.Title && f.Title.includes('|PDF|')) {
-        pdfUrl = f.Title.split('|PDF|')[1] || '';
-      }
+        : (dateFromTitle || '-');
+      const pdfUrl = f.SignatureFileUrl || '';
 
       const dtShort = dt !== '-' ? dt.replace(/^\d{4}\. /,'').replace(/\. /,'/').replace(/\.$/,'') : '-';
 
@@ -877,7 +873,7 @@ async function submitForm() {
     };
     // 모든 데이터를 Title(제목) 하나에 저장 - 컬럼 추가 불필요
     // Title: 255자 이내 (SharePoint 제한)
-    const titleStr = ('[' + now.substring(0,10) + '] ' + user.email + (signFileUrl ? ' |PDF|' + signFileUrl : '')).substring(0, 255);
+    const titleStr = ('[' + now.substring(0,10) + '] ' + user.email).substring(0, 255);
 
     // 동의 결과 전체 텍스트 (multiline용)
     const consentDetail = [
@@ -889,23 +885,26 @@ async function submitForm() {
       signFileUrl ? '서명파일: ' + signFileUrl : '서명파일: 없음'
     ].join('\n');
 
-    // SharePoint multiline 텍스트 필드로 저장
-    const fields = {
-      Title: titleStr,
-      ConsentDetail: consentDetail
-    };
+    // SharePoint 저장 - Title + SignatureFileUrl
+    const fields = { Title: titleStr };
+    if (signFileUrl) fields.SignatureFileUrl = signFileUrl;
 
-    // 1차 시도
-    let saved = false;
+    let savedItemId = null;
     try {
-      await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields });
-      saved = true;
+      const saved = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields });
+      savedItemId = saved?.id;
     } catch(e1) {
-      // ConsentDetail 컬럼이 없으면 Title만으로 재시도
-      console.warn('ConsentDetail 저장 실패, Title만 저장:', e1.message);
+      console.warn('저장 실패:', e1.message);
+      // SignatureFileUrl 없이 재시도
       try {
-        await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields: { Title: titleStr } });
-        saved = true;
+        const saved2 = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields: { Title: titleStr } });
+        savedItemId = saved2?.id;
+        // URL은 나중에 PATCH로 추가 시도
+        if (signFileUrl && savedItemId) {
+          try {
+            await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items/' + savedItemId, 'PATCH', { fields: { SignatureFileUrl: signFileUrl } });
+          } catch(e3) { console.warn('URL PATCH 실패:', e3.message); }
+        }
       } catch(e2) {
         throw new Error(e2.message);
       }
