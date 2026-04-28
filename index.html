@@ -393,20 +393,37 @@ let isSigned = false;
 // ── MSAL 초기화 ──
 window.addEventListener('load', async () => {
   const btn = document.getElementById('btn-login');
+  // 5초 안에 초기화 안 되면 강제로 버튼 활성화
+  const fallback = setTimeout(() => {
+    if (btn.disabled) {
+      btn.disabled = false;
+      btn.textContent = 'Microsoft 계정으로 로그인';
+    }
+  }, 5000);
+
   try {
-    const inst = await msal.PublicClientApplication.createPublicClientApplication({
-      auth: { clientId: CLIENT_ID, authority: 'https://login.microsoftonline.com/' + TENANT_ID, redirectUri: window.location.origin + window.location.pathname },
-      cache: { cacheLocation: 'localStorage' }
+    msalApp = new msal.PublicClientApplication({
+      auth: {
+        clientId: CLIENT_ID,
+        authority: 'https://login.microsoftonline.com/' + TENANT_ID,
+        redirectUri: window.location.origin + window.location.pathname
+      },
+      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
     });
-    msalApp = inst;
+    await msalApp.initialize();
+    clearTimeout(fallback);
+
     const resp = await msalApp.handleRedirectPromise();
     if (resp) { msalApp.setActiveAccount(resp.account); await boot(resp.account); return; }
     const accounts = msalApp.getAllAccounts();
     if (accounts.length) { msalApp.setActiveAccount(accounts[0]); await boot(accounts[0]); return; }
-    btn.disabled = false; btn.textContent = 'Microsoft 계정으로 로그인';
+    btn.disabled = false;
+    btn.textContent = 'Microsoft 계정으로 로그인';
   } catch(e) {
-    btn.disabled = false; btn.textContent = 'Microsoft 계정으로 로그인';
-    showErr(e.message);
+    clearTimeout(fallback);
+    btn.disabled = false;
+    btn.textContent = 'Microsoft 계정으로 로그인';
+    console.warn('MSAL 초기화 오류:', e.message);
   }
 });
 document.getElementById('btn-login').onclick = async () => {
