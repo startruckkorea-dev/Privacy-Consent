@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>STK 임직원 개인정보 동의서</title>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif;background:#f5f7fa;min-height:100vh;color:#1a202c}
@@ -337,6 +339,14 @@ canvas#sig-canvas{display:block;touch-action:none}
           </div>
           <!-- 서명 패드 -->
           <div class="sign-wrap" id="sign-section" style="opacity:.4;pointer-events:none">
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0 8px;border-bottom:1px solid #f1f5f9;margin-bottom:12px">
+              <span style="font-size:.82rem;color:#64748b;font-weight:500;width:48px;flex-shrink:0">성명</span>
+              <span id="sign-user-name" style="font-size:.95rem;font-weight:700;color:#1e293b;letter-spacing:.3px"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:0 0 12px">
+              <span style="font-size:.82rem;color:#64748b;font-weight:500;width:48px;flex-shrink:0">일자</span>
+              <span id="sign-date" style="font-size:.88rem;color:#475569"></span>
+            </div>
             <div class="sign-label">서명 (마우스 또는 터치로 서명해 주세요)</div>
             <div class="sign-canvas-wrap">
               <canvas id="sig-canvas" width="720" height="160"></canvas>
@@ -479,6 +489,11 @@ async function boot(account) {
   const initials = (user.displayName || '?').split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase();
   document.getElementById('nav-avatar').textContent = initials;
   document.getElementById('nav-name').textContent = user.displayName;
+  // 서명 섹션 성명/일자 업데이트
+  const snEl = document.getElementById('sign-user-name');
+  if (snEl) snEl.textContent = user.displayName || user.email;
+  const sdEl = document.getElementById('sign-date');
+  if (sdEl) sdEl.textContent = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
 
   loading(true, '데이터 확인 중...');
   try {
@@ -614,19 +629,79 @@ async function submitForm() {
     const canvas = document.getElementById('sig-canvas');
     const sigDataUrl = canvas.toDataURL('image/png');
 
-    // 1. 서명 이미지 → SharePoint 파일 저장
-    loading(true, '서명 이미지 저장 중...');
-    const sigBlob = await (await fetch(sigDataUrl)).blob();
-    const sigBuf = await sigBlob.arrayBuffer();
-    const fileName = 'Consent_Sign_' + user.email.replace(/[^a-z0-9]/gi,'_') + '_' + now.substring(0,10) + '.png';
+    // 1. PDF 생성 (동의서 전체 + 서명 포함)
+    loading(true, 'PDF 생성 중...');
+    let pdfBuf = null;
     let signFileUrl = '';
+    const fileName = 'Consent_' + user.email.replace(/[^a-z0-9]/gi,'_') + '_' + now.substring(0,10) + '.pdf';
     try {
-      const uploadRes = await apiRaw(
-        '/sites/' + siteId + '/drive/root:/PrivacyConsents/Signatures/' + fileName + ':/content',
-        'PUT', sigBuf, 'image/png'
-      );
-      signFileUrl = uploadRes.webUrl || '';
-    } catch(e) { console.warn('서명 파일 저장 실패:', e.message); }
+      const formEl = document.getElementById('form-body');
+      // 제출 버튼 숨기고 캡처
+      const submitArea = formEl.querySelector('.submit-area');
+      if (submitArea) submitArea.style.display = 'none';
+
+      const cvs = await html2canvas(formEl, {
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#f5f7fa',
+        scrollY: 0,
+        windowWidth: 800
+      });
+      if (submitArea) submitArea.style.display = '';
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW - 20;
+      const imgH = (cvs.height * imgW) / cvs.width;
+      let yPos = 10;
+      let remaining = imgH;
+      const imgData = cvs.toDataURL('image/jpeg', 0.85);
+      while (remaining > 0) {
+        const sliceH = Math.min(remaining, pageH - 20);
+        pdf.addImage(imgData, 'JPEG', 10, yPos, imgW, imgH, '', 'FAST');
+        remaining -= sliceH;
+        if (remaining > 0) { pdf.addPage(); yPos = -(imgH - sliceH); }
+      }
+      // 서명 이미지 마지막 페이지에 추가
+      pdf.addPage();
+      pdf.setFontSize(13); pdf.setTextColor(30,41,59);
+      pdf.text('서명', 10, 20);
+      pdf.setFontSize(10); pdf.setTextColor(100,116,139);
+      pdf.text('성명: ' + (user.displayName || user.email), 10, 30);
+      pdf.text('일자: ' + new Date(now).toLocaleDateString('ko-KR'), 10, 38);
+      const sigImg = new Image(); sigImg.src = sigDataUrl;
+      pdf.addImage(sigDataUrl, 'PNG', 10, 48, 120, 40);
+
+      pdfBuf = pdf.output('arraybuffer');
+    } catch(e) { console.warn('PDF 생성 실패, 서명 이미지만 저장:', e.message); }
+
+    // 2. PDF 또는 서명 이미지 → SharePoint 저장
+    loading(true, '파일 저장 중...');
+    if (pdfBuf) {
+      try {
+        const uploadRes = await apiRaw(
+          '/sites/' + siteId + '/drive/root:/PrivacyConsents/Signatures/' + fileName + ':/content',
+          'PUT', pdfBuf, 'application/pdf'
+        );
+        signFileUrl = uploadRes.webUrl || '';
+      } catch(e) { console.warn('PDF 저장 실패:', e.message); }
+    }
+    // PDF 실패 시 서명 이미지 폴백
+    if (!signFileUrl) {
+      try {
+        const sigBlob = await (await fetch(sigDataUrl)).blob();
+        const sigBuf = await sigBlob.arrayBuffer();
+        const imgName = 'Consent_Sign_' + user.email.replace(/[^a-z0-9]/gi,'_') + '_' + now.substring(0,10) + '.png';
+        const uploadRes = await apiRaw(
+          '/sites/' + siteId + '/drive/root:/PrivacyConsents/Signatures/' + imgName + ':/content',
+          'PUT', sigBuf, 'image/png'
+        );
+        signFileUrl = uploadRes.webUrl || '';
+      } catch(e) { console.warn('서명 이미지 저장 실패:', e.message); }
+    }
 
     // 2. 동의 결과 → SharePoint 리스트 항목 생성
     loading(true, '동의 내역 기록 중...');
