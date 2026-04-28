@@ -107,7 +107,30 @@ canvas#sig-canvas{display:block;touch-action:none}
 .comp-sub{font-size:.84rem;color:#64748b;line-height:1.8}
 .comp-detail{background:#f8fafc;border-radius:10px;padding:14px 18px;margin-top:18px;text-align:left;font-size:.78rem;color:#475569;line-height:1.9;border:1px solid #f1f5f9}
 
-/* ── Loading ── */
+/* ── Admin ── */
+.nav-admin-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:4px 14px;font-size:.72rem;color:#fff;cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s;display:none}
+.nav-admin-btn:hover{background:rgba(255,255,255,.25)}
+#admin-screen{display:none;padding:24px 0 60px}
+.admin-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.admin-title{font-size:1rem;font-weight:700;color:#1e293b}
+.admin-badge{background:#fef9c3;color:#854d0e;border-radius:20px;padding:3px 12px;font-size:.72rem;font-weight:600;border:1px solid #fde68a}
+.admin-table-wrap{background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.admin-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.admin-table th{padding:9px 14px;background:#f8fafc;font-weight:700;color:#64748b;text-align:left;border-bottom:1.5px solid #e2e8f0;font-size:.7rem;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.admin-table td{padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#1e293b;vertical-align:middle}
+.admin-table tbody tr:last-child td{border-bottom:none}
+.admin-table tbody tr:hover td{background:#f8fafc}
+.admin-agree{color:#16a34a;font-weight:600}
+.admin-disagree{color:#dc2626}
+.admin-pdf-link{color:#0078d4;text-decoration:none;font-size:.75rem;padding:3px 10px;border:1px solid #bfdbfe;border-radius:20px;white-space:nowrap}
+.admin-pdf-link:hover{background:#eff6ff}
+.admin-empty{text-align:center;padding:48px;color:#94a3b8;font-size:.85rem}
+.admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.stat-card{background:#fff;border-radius:12px;padding:16px 18px;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.stat-num{font-size:1.5rem;font-weight:700;color:#0078d4;margin-bottom:2px}
+.stat-label{font-size:.75rem;color:#64748b}
+
+/* ── Loading ── *//* ── Loading ── */
 #loading{display:none;position:fixed;inset:0;background:rgba(255,255,255,.75);align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(3px)}
 #loading.show{display:flex}
 .loading-box{background:#fff;border-radius:14px;padding:28px 40px;display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow:0 8px 30px rgba(0,0,0,.12)}
@@ -141,6 +164,7 @@ canvas#sig-canvas{display:block;touch-action:none}
         <div class="nav-avatar" id="nav-avatar">?</div>
         <span class="nav-name" id="nav-name"></span>
       </div>
+      <button class="nav-admin-btn" id="nav-admin-btn" onclick="showAdmin()">관리자</button>
       <button class="btn-out" onclick="signOut()">로그아웃</button>
     </div>
   </div>
@@ -371,6 +395,43 @@ canvas#sig-canvas{display:block;touch-action:none}
       </div>
     </div>
 
+    <!-- 관리자 화면 -->
+    <div id="admin-screen">
+      <div class="admin-hdr">
+        <span class="admin-title">동의서 제출 현황</span>
+        <span class="admin-badge" id="admin-badge">관리자 전용</span>
+      </div>
+      <div class="admin-stats">
+        <div class="stat-card"><div class="stat-num" id="stat-total">-</div><div class="stat-label">총 제출 인원</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-agree">-</div><div class="stat-label">전체 동의</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-partial">-</div><div class="stat-label">부분 미동의</div></div>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr>
+            <th>제출자</th>
+            <th>이메일</th>
+            <th>제출일시</th>
+            <th>1-수집필수</th>
+            <th>1-수집선택</th>
+            <th>1-고유식별</th>
+            <th>1-민감정보</th>
+            <th>2-제공필수</th>
+            <th>2-제공선택</th>
+            <th>2-고유식별</th>
+            <th>3-국외일반</th>
+            <th>3-국외고유</th>
+            <th>PDF</th>
+          </tr></thead>
+          <tbody id="admin-tbody"><tr><td colspan="13" class="admin-empty">데이터 불러오는 중...</td></tr></tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px;text-align:right">
+        <button onclick="loadAdminData()" style="background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:6px 16px;font-size:.78rem;color:#64748b;cursor:pointer;font-family:inherit">새로고침</button>
+        <button onclick="hideAdmin()" style="background:#0078d4;color:#fff;border:none;border-radius:20px;padding:6px 16px;font-size:.78rem;cursor:pointer;font-family:inherit;margin-left:6px">닫기</button>
+      </div>
+    </div>
+
     <!-- 완료 화면 -->
     <div id="complete-screen">
       <div class="comp-icon">✅</div>
@@ -502,6 +563,10 @@ async function boot(account) {
     await checkAlreadySubmitted();
   } catch(e) { console.error(e); }
   loading(false);
+  // 관리자 버튼 표시
+  if (isAdmin()) {
+    document.getElementById('nav-admin-btn').style.display = 'block';
+  }
   initCanvas();
 }
 
@@ -574,6 +639,93 @@ function allAgree3() {
   upd();
 }
 
+// ── 관리자 ──
+const ADMIN_EMAILS = ['robin.joo@hyosung.com','eunjung.seo@hyosung.com','admin@startruckkorea.onmicrosoft.com'];
+
+function isAdmin() {
+  return ADMIN_EMAILS.includes((user.email||'').toLowerCase());
+}
+
+function showAdmin() {
+  ['form-body','already-done','complete-screen'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('admin-screen').style.display = 'block';
+  loadAdminData();
+}
+
+function hideAdmin() {
+  document.getElementById('admin-screen').style.display = 'none';
+  document.getElementById('form-body').style.display = 'block';
+}
+
+async function loadAdminData() {
+  const tbody = document.getElementById('admin-tbody');
+  tbody.innerHTML = '<tr><td colspan="13" class="admin-empty">불러오는 중...</td></tr>';
+  try {
+    // PrivacyConsents 리스트 전체 조회
+    const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items?$expand=fields&$top=500&$orderby=fields/SubmittedAt desc');
+    const items = res.value || [];
+
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="13" class="admin-empty">제출된 동의서가 없습니다</td></tr>';
+      document.getElementById('stat-total').textContent = '0';
+      document.getElementById('stat-agree').textContent = '0';
+      document.getElementById('stat-partial').textContent = '0';
+      return;
+    }
+
+    const colMap = {
+      'C1_일반수집이용_필수':'C1_일반수집이용_필수',
+      'C2_일반수집이용_선택':'C2_일반수집이용_선택',
+      'C3_고유식별수집이용':'C3_고유식별수집이용',
+      'C4_민감정보수집이용':'C4_민감정보수집이용',
+      'C5_일반제3자제공_필수':'C5_일반제3자제공_필수',
+      'C6_일반제3자제공_선택':'C6_일반제3자제공_선택',
+      'C7_고유식별제3자제공':'C7_고유식별제3자제공',
+      'C8_일반국외제공':'C8_일반국외제공',
+      'C9_고유식별국외제공':'C9_고유식별국외제공'
+    };
+    const colKeys = Object.keys(colMap);
+
+    let totalAgree = 0, totalPartial = 0;
+    let rows = '';
+    for (const item of items) {
+      const f = item.fields;
+      // Title에서 이메일/이름 파싱 (ConsentDetail 없을 경우 대비)
+      const titleParts = (f.Title||'').split('] ');
+      const emailFromTitle = titleParts[1] || '';
+      const name = f.EmployeeName || emailFromTitle;
+      const email = f.EmployeeEmail || emailFromTitle;
+      const dt = f.SubmittedAt ? new Date(f.SubmittedAt).toLocaleString('ko-KR') : '-';
+      const pdfUrl = f.SignatureFileUrl || '';
+
+      const allAgree = colKeys.every(k => f[k] === '동의');
+      if (allAgree) totalAgree++; else totalPartial++;
+
+      const cells = colKeys.map(k => {
+        const v = f[k] || '-';
+        return `<td class="${v==='동의'?'admin-agree':'admin-disagree'}">${v==='동의'?'✓':'✗'}</td>`;
+      }).join('');
+
+      rows += `<tr>
+        <td style="font-weight:600">${name||'-'}</td>
+        <td style="font-size:.72rem;color:#64748b">${email||'-'}</td>
+        <td style="font-size:.72rem;white-space:nowrap">${dt}</td>
+        ${cells}
+        <td>${pdfUrl ? `<a href="${pdfUrl}" target="_blank" class="admin-pdf-link">📄 보기</a>` : '<span style="color:#cbd5e0;font-size:.72rem">없음</span>'}</td>
+      </tr>`;
+    }
+    tbody.innerHTML = rows;
+    document.getElementById('stat-total').textContent = items.length;
+    document.getElementById('stat-agree').textContent = totalAgree;
+    document.getElementById('stat-partial').textContent = totalPartial;
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="13" class="admin-empty" style="color:#e53e3e">오류: ${e.message}</td></tr>`;
+  }
+}
+
 // ── 서명 캔버스 ──
 let ctx, drawing = false, lastX = 0, lastY = 0;
 function initCanvas() {
@@ -636,44 +788,53 @@ async function submitForm() {
     const fileName = 'Consent_' + user.email.replace(/[^a-z0-9]/gi,'_') + '_' + now.substring(0,10) + '.pdf';
     try {
       const formEl = document.getElementById('form-body');
-      // 제출 버튼 숨기고 캡처
       const submitArea = formEl.querySelector('.submit-area');
       if (submitArea) submitArea.style.display = 'none';
 
+      // 전체 폼 캡처
       const cvs = await html2canvas(formEl, {
-        scale: 1.5,
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#f5f7fa',
-        scrollY: 0,
-        windowWidth: 800
+        scrollY: -window.scrollY,
+        windowWidth: 860,
+        width: 860
       });
       if (submitArea) submitArea.style.display = '';
 
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgW = pageW - 20;
-      const imgH = (cvs.height * imgW) / cvs.width;
-      let yPos = 10;
-      let remaining = imgH;
-      const imgData = cvs.toDataURL('image/jpeg', 0.85);
-      while (remaining > 0) {
-        const sliceH = Math.min(remaining, pageH - 20);
-        pdf.addImage(imgData, 'JPEG', 10, yPos, imgW, imgH, '', 'FAST');
-        remaining -= sliceH;
-        if (remaining > 0) { pdf.addPage(); yPos = -(imgH - sliceH); }
+      const pageW = pdf.internal.pageSize.getWidth();   // 210mm
+      const pageH = pdf.internal.pageSize.getHeight();  // 297mm
+      const margin = 10;
+      const printW = pageW - margin * 2;                // 190mm
+      // 캔버스 전체를 비율에 맞게 mm로 환산
+      const totalImgH = (cvs.height / cvs.width) * printW;
+      const imgData = cvs.toDataURL('image/jpeg', 0.92);
+
+      // 페이지 슬라이싱: 각 페이지에 잘라서 붙이기
+      const printableH = pageH - margin * 2;
+      let pages = Math.ceil(totalImgH / printableH);
+      for (let i = 0; i < pages; i++) {
+        if (i > 0) pdf.addPage();
+        // 현재 페이지의 y 오프셋(mm)
+        const srcY = i * printableH;
+        // 남은 높이
+        const sliceH = Math.min(printableH, totalImgH - srcY);
+        // addImage: x, y, w, h, alias, compression, rotation
+        // y를 음수로 밀어서 원하는 구간만 보이게
+        pdf.addImage(imgData, 'JPEG', margin, margin - srcY, printW, totalImgH, 'pg'+i, 'FAST');
+        // 현재 페이지 범위 밖 클립 (addImage는 클립 없으므로 흰 rect로 덮기)
+        // 위쪽 덮기
+        pdf.setFillColor(255,255,255);
+        pdf.rect(0, 0, pageW, margin, 'F');
+        // 아래쪽 덮기
+        pdf.rect(0, margin + sliceH, pageW, pageH - (margin + sliceH), 'F');
+        // 좌우 덮기
+        pdf.rect(0, 0, margin, pageH, 'F');
+        pdf.rect(pageW - margin, 0, margin, pageH, 'F');
       }
-      // 서명 이미지 마지막 페이지에 추가
-      pdf.addPage();
-      pdf.setFontSize(13); pdf.setTextColor(30,41,59);
-      pdf.text('서명', 10, 20);
-      pdf.setFontSize(10); pdf.setTextColor(100,116,139);
-      pdf.text('성명: ' + (user.displayName || user.email), 10, 30);
-      pdf.text('일자: ' + new Date(now).toLocaleDateString('ko-KR'), 10, 38);
-      const sigImg = new Image(); sigImg.src = sigDataUrl;
-      pdf.addImage(sigDataUrl, 'PNG', 10, 48, 120, 40);
 
       pdfBuf = pdf.output('arraybuffer');
     } catch(e) { console.warn('PDF 생성 실패, 서명 이미지만 저장:', e.message); }
