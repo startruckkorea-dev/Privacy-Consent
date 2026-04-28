@@ -577,9 +577,13 @@ async function boot(account) {
 // ── 중복 제출 확인 ──
 async function checkAlreadySubmitted() {
   try {
-    const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items?$expand=fields&$filter=fields/EmployeeEmail eq \'' + user.email + '\'&$top=5');
-    if (res.value && res.value.length > 0) {
-      const item = res.value[0].fields;
+    const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items?$expand=fields&$top=500');
+    const myItems = (res.value||[]).filter(i => {
+      const t = i.fields.Title || '';
+      return t.includes(user.email) || (i.fields.EmployeeEmail||'').toLowerCase() === user.email;
+    });
+    if (myItems.length > 0) {
+      const item = myItems[0].fields;
       document.getElementById('form-body').style.display = 'none';
       document.getElementById('already-done').style.display = 'block';
       const dt = item.SubmittedAt ? new Date(item.SubmittedAt).toLocaleString('ko-KR') : '';
@@ -678,7 +682,7 @@ async function loadAdminData() {
   tbody.innerHTML = '<tr><td colspan="13" class="admin-empty">불러오는 중...</td></tr>';
   try {
     // PrivacyConsents 리스트 전체 조회
-    const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items?$expand=fields&$top=500&$orderby=fields/SubmittedAt desc');
+    const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items?$expand=fields&$top=500');
     const items = res.value || [];
 
     if (!items.length) {
@@ -702,16 +706,27 @@ async function loadAdminData() {
     };
     const colKeys = Object.keys(colMap);
 
+    // 제출일 기준 내림차순 정렬 (최신 먼저)
+    items.sort((a, b) => {
+      const da = a.fields.SubmittedAt || a.fields.Title || '';
+      const db = b.fields.SubmittedAt || b.fields.Title || '';
+      return db.localeCompare(da);
+    });
     let totalAgree = 0, totalPartial = 0;
     let rows = '';
     for (const item of items) {
       const f = item.fields;
       // Title에서 이메일/이름 파싱 (ConsentDetail 없을 경우 대비)
-      const titleParts = (f.Title||'').split('] ');
-      const emailFromTitle = titleParts[1] || '';
-      const name = f.EmployeeName || emailFromTitle;
+      // Title 형식: "[2026-04-28] email@..." 파싱
+      const titleStr = f.Title || '';
+      const titleMatch = titleStr.match(/^\[([^\]]+)\]\s*(.+)/);
+      const dateFromTitle = titleMatch ? titleMatch[1] : '';
+      const emailFromTitle = titleMatch ? titleMatch[2].trim() : titleStr;
+      const name = f.EmployeeName || emailFromTitle.split('@')[0] || '-';
       const email = f.EmployeeEmail || emailFromTitle;
-      const dt = f.SubmittedAt ? new Date(f.SubmittedAt).toLocaleString('ko-KR') : '-';
+      const dt = f.SubmittedAt
+        ? new Date(f.SubmittedAt).toLocaleString('ko-KR')
+        : (dateFromTitle ? dateFromTitle : '-');
       const pdfUrl = f.SignatureFileUrl || '';
 
       const allAgree = colKeys.every(k => f[k] === '동의');
