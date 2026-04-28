@@ -675,16 +675,12 @@ function hideAdmin() {
 async function downloadPdf(unused, dlFileName) {
   try {
     const t = await getToken();
-    // Graph API: /sites/{id}/drive/root:/PrivacyConsents/Signatures/{파일명}:/content
-    const driveBase = driveId
-      ? 'https://graph.microsoft.com/v1.0/drives/' + driveId
-      : 'https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive';
-    const graphUrl = driveBase + '/root:/PrivacyConsents/Signatures/' + dlFileName + ':/content';
+    const serverRelUrl = "/sites/STK-DB/Shared Documents/PrivacyConsents/Signatures/" + dlFileName;
+    const spUrl = "https://startruckkorea.sharepoint.com/sites/STK-DB/_api/web/GetFileByServerRelativeUrl('" + serverRelUrl + "')/$value";
 
-    const res = await fetch(graphUrl, {
-      headers: { Authorization: 'Bearer ' + t }
+    const res = await fetch(spUrl, {
+      headers: { 'Authorization': 'Bearer ' + t, 'Accept': 'application/octet-stream' }
     });
-
     if (!res.ok) throw new Error('파일을 찾을 수 없습니다. (' + res.status + ')');
 
     const blob = await res.blob();
@@ -877,48 +873,46 @@ async function submitForm() {
       pdfBuf = pdf.output('arraybuffer');
     } catch(e) { console.warn('PDF 생성 실패, 서명 이미지만 저장:', e.message); }
 
-    // 2. PDF → SharePoint 저장 후 @microsoft.graph.downloadUrl 로 직접 다운 URL 확보
+
+    // 2. PDF → SharePoint REST API 업로드
     loading(true, '파일 저장 중...');
     if (pdfBuf) {
       try {
-        // 파일 업로드
-        const drivePath = driveId ? '/drives/' + driveId : '/sites/' + siteId + '/drive';
-        await apiRaw(
-          'https://graph.microsoft.com/v1.0' + drivePath + '/root:/PrivacyConsents/Signatures/' + fileName + ':/content',
-          'PUT', pdfBuf, 'application/pdf'
-        );
-        try {
-          const fileMeta = await api(drivePath + '/root:/PrivacyConsents/Signatures/' + fileName);
-          signFileUrl = fileMeta.webUrl || fileMeta['@microsoft.graph.downloadUrl'] || '';
-          console.log('PDF webUrl:', signFileUrl);
-        } catch(e2) {
-          // webUrl 조회 실패 시 수동으로 URL 구성
-          signFileUrl = 'https://startruckkorea.sharepoint.com/sites/STK-DB/Shared%20Documents/PrivacyConsents/Signatures/' + encodeURIComponent(fileName);
-          console.warn('메타 조회 실패, 수동 URL 사용:', signFileUrl);
+        const spToken = await getToken();
+        const folderSR = "/sites/STK-DB/Shared Documents/PrivacyConsents/Signatures";
+        const uploadUrl = "https://startruckkorea.sharepoint.com/sites/STK-DB/_api/web/GetFolderByServerRelativeUrl('" + encodeURIComponent(folderSR) + "')/Files/add(url='" + encodeURIComponent(fileName) + "',overwrite=true)";
+        const upRes = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + spToken,
+            'Accept': 'application/json;odata=verbose',
+          },
+          body: pdfBuf
+        });
+        if (upRes.ok) {
+          const upJson = await upRes.json();
+          const sru = upJson?.d?.ServerRelativeUrl || '';
+          signFileUrl = sru ? 'https://startruckkorea.sharepoint.com' + sru : '';
+          console.log('SP REST 업로드 성공:', signFileUrl);
+        } else {
+          const errText = await upRes.text();
+          console.warn('SP REST 업로드 실패:', upRes.status, errText.substring(0,300));
+          throw new Error('SP REST ' + upRes.status);
         }
-      } catch(e) { console.warn('PDF 저장 실패:', e.message); }
-    }
-    // PDF 실패 시 서명 이미지 폴백
-    if (!signFileUrl) {
-      try {
-        const sigBlob = await (await fetch(sigDataUrl)).blob();
-        const sigBuf = await sigBlob.arrayBuffer();
-        const imgName = 'Consent_Sign_' + user.email.replace(/[^a-z0-9]/gi,'_') + '_' + now.substring(0,10) + '.png';
-        const drivePath2 = driveId ? '/drives/' + driveId : '/sites/' + siteId + '/drive';
-        await apiRaw(
-          'https://graph.microsoft.com/v1.0' + drivePath2 + '/root:/PrivacyConsents/Signatures/' + imgName + ':/content',
-          'PUT', sigBuf, 'image/png'
-        );
+      } catch(e) {
+        console.warn('SP REST 실패, Graph API 시도:', e.message);
         try {
-          const imgMeta = await api(drivePath2 + '/root:/PrivacyConsents/Signatures/' + imgName);
-          signFileUrl = imgMeta.webUrl || '';
-        } catch(e2) {
-          signFileUrl = 'https://startruckkorea.sharepoint.com/sites/STK-DB/Shared%20Documents/PrivacyConsents/Signatures/' + encodeURIComponent(imgName);
-        }
-      } catch(e) { console.warn('서명 이미지 저장 실패:', e.message); }
+          const dPath = driveId ? '/drives/' + driveId : '/sites/' + siteId + '/drive';
+          await apiRaw(
+            'https://graph.microsoft.com/v1.0' + dPath + '/root:/PrivacyConsents/Signatures/' + fileName + ':/content',
+            'PUT', pdfBuf, 'application/pdf'
+          );
+          signFileUrl = fileName; // 파일명만 저장, 다운로드 시 조합
+          console.log('Graph PUT 성공');
+        } catch(e2) { console.warn('Graph PUT도 실패:', e2.message); }
+      }
     }
 
-    // 2. 동의 결과 → SharePoint 리스트 항목 생성
     loading(true, '동의 내역 기록 중...');
     const labels = {
       r1:'C1_일반수집이용_필수', r2:'C2_일반수집이용_선택',
