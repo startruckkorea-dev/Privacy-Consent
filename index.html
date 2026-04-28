@@ -125,10 +125,7 @@ canvas#sig-canvas{display:block;touch-action:none}
 .admin-pdf-link{color:#0078d4;text-decoration:none;font-size:.75rem;padding:5px 14px;border:1px solid #bfdbfe;border-radius:20px;white-space:nowrap;font-weight:600;transition:all .15s}
 .admin-pdf-link:hover{background:#eff6ff}
 .admin-empty{text-align:center;padding:48px;color:#94a3b8;font-size:.85rem}
-.admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
-.stat-card{background:#fff;border-radius:12px;padding:16px 18px;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.stat-num{font-size:1.5rem;font-weight:700;color:#0078d4;margin-bottom:2px}
-.stat-label{font-size:.75rem;color:#64748b}
+
 
 /* ── Loading ── *//* ── Loading ── */
 #loading{display:none;position:fixed;inset:0;background:rgba(255,255,255,.75);align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(3px)}
@@ -401,11 +398,7 @@ canvas#sig-canvas{display:block;touch-action:none}
         <span class="admin-title">동의서 제출 현황</span>
         <span class="admin-badge" id="admin-badge">관리자 전용</span>
       </div>
-      <div class="admin-stats">
-        <div class="stat-card"><div class="stat-num" id="stat-total">-</div><div class="stat-label">총 제출 인원</div></div>
-        <div class="stat-card"><div class="stat-num" id="stat-agree">-</div><div class="stat-label">전체 동의</div></div>
-        <div class="stat-card"><div class="stat-num" id="stat-partial">-</div><div class="stat-label">부분 미동의</div></div>
-      </div>
+
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead><tr>
@@ -414,7 +407,7 @@ canvas#sig-canvas{display:block;touch-action:none}
             <th>제출일</th>
             <th style="text-align:center">동의서 PDF</th>
           </tr></thead>
-          <tbody id="admin-tbody"><tr><td colspan="13" class="admin-empty">데이터 불러오는 중...</td></tr></tbody>
+          <tbody id="admin-tbody"><tr><td colspan="4" class="admin-empty">데이터 불러오는 중...</td></tr></tbody>
         </table>
       </div>
       <div style="margin-top:12px;text-align:right">
@@ -670,32 +663,18 @@ function hideAdmin() {
 
 async function loadAdminData() {
   const tbody = document.getElementById('admin-tbody');
-  tbody.innerHTML = '<tr><td colspan="13" class="admin-empty">불러오는 중...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">불러오는 중...</td></tr>';
   try {
     // PrivacyConsents 리스트 전체 조회
     const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items?$expand=fields&$top=500');
     const items = res.value || [];
 
     if (!items.length) {
-      tbody.innerHTML = '<tr><td colspan="13" class="admin-empty">제출된 동의서가 없습니다</td></tr>';
-      document.getElementById('stat-total').textContent = '0';
-      document.getElementById('stat-agree').textContent = '0';
-      document.getElementById('stat-partial').textContent = '0';
+      tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">제출된 동의서가 없습니다</td></tr>';
       return;
     }
 
-    const colMap = {
-      'C1_일반수집이용_필수':'C1_일반수집이용_필수',
-      'C2_일반수집이용_선택':'C2_일반수집이용_선택',
-      'C3_고유식별수집이용':'C3_고유식별수집이용',
-      'C4_민감정보수집이용':'C4_민감정보수집이용',
-      'C5_일반제3자제공_필수':'C5_일반제3자제공_필수',
-      'C6_일반제3자제공_선택':'C6_일반제3자제공_선택',
-      'C7_고유식별제3자제공':'C7_고유식별제3자제공',
-      'C8_일반국외제공':'C8_일반국외제공',
-      'C9_고유식별국외제공':'C9_고유식별국외제공'
-    };
-    const colKeys = Object.keys(colMap);
+
 
     // 제출일 기준 내림차순 정렬 (최신 먼저)
     items.sort((a, b) => {
@@ -703,7 +682,6 @@ async function loadAdminData() {
       const db = b.fields.SubmittedAt || b.fields.Title || '';
       return db.localeCompare(da);
     });
-    let totalAgree = 0, totalPartial = 0;
     let rows = '';
     for (const item of items) {
       const f = item.fields;
@@ -718,10 +696,11 @@ async function loadAdminData() {
       const dt = f.SubmittedAt
         ? new Date(f.SubmittedAt).toLocaleString('ko-KR')
         : (dateFromTitle ? dateFromTitle : '-');
-      const pdfUrl = f.SignatureFileUrl || '';
-
-      const allAgree = colKeys.every(k => f[k] === '동의');
-      if (allAgree) totalAgree++; else totalPartial++;
+      // Title에서 PDF URL 추출: "[날짜] email |PDF|url" 형식
+      let pdfUrl = f.SignatureFileUrl || '';
+      if (!pdfUrl && f.Title && f.Title.includes('|PDF|')) {
+        pdfUrl = f.Title.split('|PDF|')[1] || '';
+      }
 
       const dtShort = dt !== '-' ? dt.replace(/^\d{4}\. /,'').replace(/\. /,'/').replace(/\.$/,'') : '-';
 
@@ -736,11 +715,9 @@ async function loadAdminData() {
       </tr>`;
     }
     tbody.innerHTML = rows;
-    document.getElementById('stat-total').textContent = items.length;
-    document.getElementById('stat-agree').textContent = totalAgree;
-    document.getElementById('stat-partial').textContent = totalPartial;
+
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="13" class="admin-empty" style="color:#e53e3e">오류: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="admin-empty" style="color:#e53e3e">오류: ${e.message}</td></tr>`;
   }
 }
 
@@ -900,7 +877,7 @@ async function submitForm() {
     };
     // 모든 데이터를 Title(제목) 하나에 저장 - 컬럼 추가 불필요
     // Title: 255자 이내 (SharePoint 제한)
-    const titleStr = ('[' + now.substring(0,10) + '] ' + user.email).substring(0, 255);
+    const titleStr = ('[' + now.substring(0,10) + '] ' + user.email + (signFileUrl ? ' |PDF|' + signFileUrl : '')).substring(0, 255);
 
     // 동의 결과 전체 텍스트 (multiline용)
     const consentDetail = [
