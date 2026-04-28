@@ -614,11 +614,18 @@ async function submitForm() {
     // 2. 동의 결과 → SharePoint 리스트 항목 생성
     loading(true, '동의 내역 기록 중...');
     const labels = {
-      r1:'일반개인정보_수집이용_필수', r2:'일반개인정보_수집이용_선택',
-      r3:'고유식별정보_수집이용', r4:'민감정보_수집이용',
-      r5:'일반개인정보_제3자제공_필수', r6:'일반개인정보_제3자제공_선택',
-      r7:'고유식별정보_제3자제공', r8:'일반개인정보_국외제공',
-      r9:'고유식별정보_국외제공', r10:'최종확인'
+      r1:'C1_일반수집이용_필수', r2:'C2_일반수집이용_선택',
+      r3:'C3_고유식별수집이용', r4:'C4_민감정보수집이용',
+      r5:'C5_일반제3자제공_필수', r6:'C6_일반제3자제공_선택',
+      r7:'C7_고유식별제3자제공', r8:'C8_일반국외제공',
+      r9:'C9_고유식별국외제공', r10:'C10_최종확인'
+    };
+    const labelDisplay = {
+      r1:'일반 개인정보 수집·이용(필수)', r2:'일반 개인정보 수집·이용(선택)',
+      r3:'고유식별정보 수집·이용', r4:'민감정보 수집·이용',
+      r5:'일반 개인정보 제3자제공(필수)', r6:'일반 개인정보 제3자제공(선택)',
+      r7:'고유식별정보 제3자제공', r8:'일반 개인정보 국외제공',
+      r9:'고유식별정보 국외제공', r10:'최종 확인'
     };
     const fields = {
       Title: '동의서_' + user.email + '_' + now.substring(0,10),
@@ -630,20 +637,15 @@ async function submitForm() {
     };
     Object.keys(labels).forEach(k => { fields[labels[k]] = getVal(k) === 'agree' ? '동의' : '미동의'; });
 
-    try {
-      await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields });
-    } catch(e) {
-      // 리스트 없으면 생성 후 재시도
-      console.warn('리스트 항목 생성 실패, 리스트 생성 시도:', e.message);
-      await createListIfNeeded();
-      await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields });
-    }
+    // 컬럼 먼저 확보 후 항목 저장
+    await ensureColumns();
+    await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields });
 
     // 완료 화면
     document.getElementById('form-body').style.display = 'none';
     const cs = document.getElementById('complete-screen');
     cs.style.display = 'block';
-    const lines = Object.keys(labels).map(k => (getVal(k)==='agree'?'✓ ':'✗ ') + labels[k].replace(/_/g,' ') + ': ' + (getVal(k)==='agree'?'동의':'미동의'));
+    const lines = Object.keys(labelDisplay).map(k => (getVal(k)==='agree'?'✓ ':'✗ ') + labelDisplay[k] + ': ' + (getVal(k)==='agree'?'동의':'미동의'));
     document.getElementById('comp-detail').innerHTML =
       '<b>제출자:</b> ' + user.displayName + ' (' + user.email + ')<br>' +
       '<b>제출 일시:</b> ' + new Date(now).toLocaleString('ko-KR') + '<br><br>' +
@@ -657,22 +659,38 @@ async function submitForm() {
   loading(false);
 }
 
-async function createListIfNeeded() {
-  const columns = [
-    {name:'EmployeeName',type:'text'},{name:'EmployeeEmail',type:'text'},
-    {name:'SubmittedAt',type:'dateTime'},{name:'SignatureFileUrl',type:'text'},
-    {name:'Year',type:'text'},
-    {name:'일반개인정보_수집이용_필수',type:'text'},{name:'일반개인정보_수집이용_선택',type:'text'},
-    {name:'고유식별정보_수집이용',type:'text'},{name:'민감정보_수집이용',type:'text'},
-    {name:'일반개인정보_제3자제공_필수',type:'text'},{name:'일반개인정보_제3자제공_선택',type:'text'},
-    {name:'고유식별정보_제3자제공',type:'text'},{name:'일반개인정보_국외제공',type:'text'},
-    {name:'고유식별정보_국외제공',type:'text'},{name:'최종확인',type:'text'},
+async function ensureColumns() {
+  // 리스트 기존 컬럼 조회
+  let existing = [];
+  try {
+    const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/columns');
+    existing = (res.value || []).map(c => c.name);
+  } catch(e) { console.warn('컬럼 조회 실패:', e.message); }
+
+  const needed = [
+    {name:'EmployeeName', text:{}},
+    {name:'EmployeeEmail', text:{}},
+    {name:'SubmittedAt', text:{}},
+    {name:'SignatureFileUrl', text:{}},
+    {name:'Year', text:{}},
+    {name:'C1_일반수집이용_필수', text:{}},
+    {name:'C2_일반수집이용_선택', text:{}},
+    {name:'C3_고유식별수집이용', text:{}},
+    {name:'C4_민감정보수집이용', text:{}},
+    {name:'C5_일반제3자제공_필수', text:{}},
+    {name:'C6_일반제3자제공_선택', text:{}},
+    {name:'C7_고유식별제3자제공', text:{}},
+    {name:'C8_일반국외제공', text:{}},
+    {name:'C9_고유식별국외제공', text:{}},
+    {name:'C10_최종확인', text:{}},
   ];
-  await api('/sites/' + siteId + '/lists', 'POST', {
-    displayName: LIST_NAME,
-    columns: columns.map(c => ({ name: c.name, ...(c.type === 'dateTime' ? { dateTime: {} } : { text: {} }) })),
-    list: { template: 'genericList' }
-  });
+
+  for (const col of needed) {
+    if (existing.includes(col.name)) continue;
+    try {
+      await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/columns', 'POST', col);
+    } catch(e) { console.warn('컬럼 생성 실패:', col.name, e.message); }
+  }
 }
 </script>
 </body>
