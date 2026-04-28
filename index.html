@@ -122,7 +122,7 @@ canvas#sig-canvas{display:block;touch-action:none}
 .admin-table tbody tr:hover td{background:#f8fafc}
 .admin-agree{color:#16a34a;font-weight:600}
 .admin-disagree{color:#dc2626}
-.admin-pdf-link{color:#0078d4;text-decoration:none;font-size:.75rem;padding:5px 14px;border:1px solid #bfdbfe;border-radius:20px;white-space:nowrap;font-weight:600;transition:all .15s}
+.admin-pdf-link{color:#0078d4;background:#fff;font-size:.75rem;padding:5px 14px;border:1px solid #bfdbfe;border-radius:20px;white-space:nowrap;font-weight:600;transition:all .15s;cursor:pointer;font-family:inherit}.admin-pdf-link:hover{background:#eff6ff}
 .admin-pdf-link:hover{background:#eff6ff}
 .admin-empty{text-align:center;padding:48px;color:#94a3b8;font-size:.85rem}
 
@@ -664,6 +664,47 @@ function hideAdmin() {
   document.getElementById('form-body').style.display = 'block';
 }
 
+async function downloadPdf(encodedUrl, fileName) {
+  const url = decodeURIComponent(encodedUrl);
+  try {
+    // Graph API로 파일 내용 직접 fetch
+    const t = await getToken();
+    // SharePoint webUrl → drive item path 추출
+    const pathMatch = url.match(/Shared%20Documents\/(.+)$|Shared Documents\/(.+)$/);
+    const filePath = pathMatch ? (pathMatch[1] || pathMatch[2]) : null;
+    let blob = null;
+
+    if (filePath) {
+      const decodedPath = decodeURIComponent(filePath);
+      const res = await fetch(
+        'https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive/root:/' + encodeURIComponent(decodedPath) + ':/content',
+        { headers: { Authorization: 'Bearer ' + t } }
+      );
+      if (res.ok) blob = await res.blob();
+    }
+
+    if (!blob) {
+      // fallback: 직접 fetch
+      const res = await fetch(url, { headers: { Authorization: 'Bearer ' + t } });
+      if (res.ok) blob = await res.blob();
+    }
+
+    if (blob) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName || 'consent.pdf';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    } else {
+      alert('파일을 불러올 수 없습니다. SharePoint에서 직접 다운로드해 주세요.');
+    }
+  } catch(e) {
+    console.error('다운로드 오류:', e);
+    alert('다운로드 오류: ' + e.message);
+  }
+}
+
 async function loadAdminData() {
   const tbody = document.getElementById('admin-tbody');
   tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">불러오는 중...</td></tr>';
@@ -708,13 +749,15 @@ async function loadAdminData() {
       }
 
       const dtShort = dt !== '-' ? dt.replace(/^\d{4}\. /,'').replace(/\. /,'/').replace(/\.$/,'') : '-';
+      const safeName = email.replace(/[^a-z0-9]/gi,'_');
+      const fileName = 'Consent_' + safeName + '_' + dateFromTitle + '.pdf';
 
       rows += `<tr>
         <td style="font-weight:600">${name||'-'}</td>
         <td style="color:#64748b">${email||'-'}</td>
         <td style="font-size:.75rem;color:#94a3b8;white-space:nowrap">${dtShort}</td>
         <td style="text-align:center">${pdfUrl
-          ? `<a href="${pdfUrl}" download target="_blank" class="admin-pdf-link">⬇ 다운로드</a>`
+          ? `<button class="admin-pdf-link" onclick="downloadPdf('${encodeURIComponent(pdfUrl)}','${fileName}')">⬇ 다운로드</button>`
           : '<span style="color:#cbd5e0;font-size:.72rem">없음</span>'
         }</td>
       </tr>`;
