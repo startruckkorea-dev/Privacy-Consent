@@ -547,6 +547,10 @@ async function boot(account) {
     user.email = (account.username || '').toLowerCase();
     user.displayName = account.name || '';
   }
+  // account 정보도 user에 복사 (isAdmin에서 참조)
+  user.username = (account.username || '').toLowerCase();
+  user.idTokenClaims = account.idTokenClaims || {};
+  console.log('[Boot] user.email:', user.email, '| username:', user.username);
   const initials = (user.displayName || '?').split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase();
   document.getElementById('nav-avatar').textContent = initials;
   document.getElementById('nav-name').textContent = user.displayName;
@@ -643,7 +647,16 @@ function allAgree3() {
 const ADMIN_EMAILS = ['robin.joo@hyosung.com','eunjung.seo@hyosung.com','admin@startruckkorea.onmicrosoft.com'];
 
 function isAdmin() {
-  return ADMIN_EMAILS.includes((user.email||'').toLowerCase());
+  const emails = ADMIN_EMAILS.map(e => e.toLowerCase());
+  const toCheck = [
+    user.email,
+    user.username,
+    user.idTokenClaims?.preferred_username,
+    user.idTokenClaims?.upn,
+    user.idTokenClaims?.email,
+  ].map(e => (e||'').toLowerCase()).filter(Boolean);
+  console.log('[Admin check] toCheck:', toCheck);
+  return toCheck.some(e => emails.includes(e));
 }
 
 function showAdmin() {
