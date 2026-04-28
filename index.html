@@ -675,23 +675,18 @@ function hideAdmin() {
 async function downloadPdf(unused, dlFileName) {
   try {
     const t = await getToken();
-    const serverRelUrl = "/sites/STK-DB/Shared Documents/PrivacyConsents/Signatures/" + dlFileName;
-    const spUrl = "https://startruckkorea.sharepoint.com/sites/STK-DB/_api/web/GetFileByServerRelativeUrl('" + serverRelUrl + "')/$value";
-
-    const res = await fetch(spUrl, {
-      headers: { 'Authorization': 'Bearer ' + t, 'Accept': 'application/octet-stream' }
-    });
+    const dPath = 'https://graph.microsoft.com/v1.0/drives/' + driveId;
+    const dlUrl = dPath + '/root:/PrivacyConsents/Signatures/' + dlFileName + ':/content';
+    console.log('다운로드 경로:', dlUrl);
+    const res = await fetch(dlUrl, { headers: { Authorization: 'Bearer ' + t } });
     if (!res.ok) throw new Error('파일을 찾을 수 없습니다. (' + res.status + ')');
-
     const blob = await res.blob();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = dlFileName;
-    document.body.appendChild(a);
-    a.click();
+    document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
   } catch(e) {
-    console.error('다운로드 오류:', e);
     alert('다운로드 오류: ' + e.message);
   }
 }
@@ -874,42 +869,37 @@ async function submitForm() {
     } catch(e) { console.warn('PDF 생성 실패, 서명 이미지만 저장:', e.message); }
 
 
-    // 2. PDF → SharePoint REST API 업로드
+    // 2. PDF → Graph API PUT (driveId 사용)
     loading(true, '파일 저장 중...');
     if (pdfBuf) {
       try {
-        const spToken = await getToken();
-        const folderSR = "/sites/STK-DB/Shared Documents/PrivacyConsents/Signatures";
-        const uploadUrl = "https://startruckkorea.sharepoint.com/sites/STK-DB/_api/web/GetFolderByServerRelativeUrl('" + encodeURIComponent(folderSR) + "')/Files/add(url='" + encodeURIComponent(fileName) + "',overwrite=true)";
-        const upRes = await fetch(uploadUrl, {
-          method: 'POST',
+        // driveId로 정확한 경로에 PUT
+        const dPath = 'https://graph.microsoft.com/v1.0/drives/' + driveId;
+        // 폴더 경로: PrivacyConsents/Signatures (드라이브 루트 기준)
+        const uploadPath = dPath + '/root:/PrivacyConsents/Signatures/' + fileName + ':/content';
+        console.log('업로드 경로:', uploadPath);
+        const upToken = await getToken();
+        const upRes = await fetch(uploadPath, {
+          method: 'PUT',
           headers: {
-            'Authorization': 'Bearer ' + spToken,
-            'Accept': 'application/json;odata=verbose',
+            'Authorization': 'Bearer ' + upToken,
+            'Content-Type': 'application/pdf'
           },
           body: pdfBuf
         });
         if (upRes.ok) {
           const upJson = await upRes.json();
-          const sru = upJson?.d?.ServerRelativeUrl || '';
-          signFileUrl = sru ? 'https://startruckkorea.sharepoint.com' + sru : '';
-          console.log('SP REST 업로드 성공:', signFileUrl);
+          signFileUrl = upJson.webUrl || upJson['@microsoft.graph.downloadUrl'] || fileName;
+          console.log('Graph PUT 성공:', signFileUrl);
         } else {
           const errText = await upRes.text();
-          console.warn('SP REST 업로드 실패:', upRes.status, errText.substring(0,300));
-          throw new Error('SP REST ' + upRes.status);
+          console.warn('Graph PUT 실패:', upRes.status, errText.substring(0,200));
+          throw new Error('Graph PUT ' + upRes.status);
         }
       } catch(e) {
-        console.warn('SP REST 실패, Graph API 시도:', e.message);
-        try {
-          const dPath = driveId ? '/drives/' + driveId : '/sites/' + siteId + '/drive';
-          await apiRaw(
-            'https://graph.microsoft.com/v1.0' + dPath + '/root:/PrivacyConsents/Signatures/' + fileName + ':/content',
-            'PUT', pdfBuf, 'application/pdf'
-          );
-          signFileUrl = fileName; // 파일명만 저장, 다운로드 시 조합
-          console.log('Graph PUT 성공');
-        } catch(e2) { console.warn('Graph PUT도 실패:', e2.message); }
+        console.warn('업로드 실패:', e.message);
+        // 파일명만 저장 (다운로드 시 드라이브에서 찾음)
+        signFileUrl = fileName;
       }
     }
 
