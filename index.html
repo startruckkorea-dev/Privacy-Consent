@@ -830,15 +830,25 @@ async function submitForm() {
       pdfBuf = pdf.output('arraybuffer');
     } catch(e) { console.warn('PDF 생성 실패, 서명 이미지만 저장:', e.message); }
 
-    // 2. PDF 또는 서명 이미지 → SharePoint 저장
+    // 2. PDF → SharePoint 저장 후 @microsoft.graph.downloadUrl 로 직접 다운 URL 확보
     loading(true, '파일 저장 중...');
     if (pdfBuf) {
       try {
-        const uploadRes = await apiRaw(
+        // 파일 업로드
+        await apiRaw(
           '/sites/' + siteId + '/drive/root:/PrivacyConsents/Signatures/' + fileName + ':/content',
           'PUT', pdfBuf, 'application/pdf'
         );
-        signFileUrl = uploadRes.webUrl || '';
+        // 업로드 직후 Graph API로 파일 메타데이터 조회 → webUrl 획득
+        try {
+          const fileMeta = await api('/sites/' + siteId + '/drive/root:/PrivacyConsents/Signatures/' + fileName);
+          signFileUrl = fileMeta.webUrl || fileMeta['@microsoft.graph.downloadUrl'] || '';
+          console.log('PDF webUrl:', signFileUrl);
+        } catch(e2) {
+          // webUrl 조회 실패 시 수동으로 URL 구성
+          signFileUrl = 'https://startruckkorea.sharepoint.com/sites/STK-DB/Shared%20Documents/PrivacyConsents/Signatures/' + encodeURIComponent(fileName);
+          console.warn('메타 조회 실패, 수동 URL 사용:', signFileUrl);
+        }
       } catch(e) { console.warn('PDF 저장 실패:', e.message); }
     }
     // PDF 실패 시 서명 이미지 폴백
@@ -847,11 +857,16 @@ async function submitForm() {
         const sigBlob = await (await fetch(sigDataUrl)).blob();
         const sigBuf = await sigBlob.arrayBuffer();
         const imgName = 'Consent_Sign_' + user.email.replace(/[^a-z0-9]/gi,'_') + '_' + now.substring(0,10) + '.png';
-        const uploadRes = await apiRaw(
+        await apiRaw(
           '/sites/' + siteId + '/drive/root:/PrivacyConsents/Signatures/' + imgName + ':/content',
           'PUT', sigBuf, 'image/png'
         );
-        signFileUrl = uploadRes.webUrl || '';
+        try {
+          const imgMeta = await api('/sites/' + siteId + '/drive/root:/PrivacyConsents/Signatures/' + imgName);
+          signFileUrl = imgMeta.webUrl || '';
+        } catch(e2) {
+          signFileUrl = 'https://startruckkorea.sharepoint.com/sites/STK-DB/Shared%20Documents/PrivacyConsents/Signatures/' + encodeURIComponent(imgName);
+        }
       } catch(e) { console.warn('서명 이미지 저장 실패:', e.message); }
     }
 
