@@ -468,8 +468,6 @@ async function boot(account) {
     const site = await api('/sites/' + SITE_PATH);
     siteId = site.id;
     await checkAlreadySubmitted();
-    loading(true, '시스템 준비 중...');
-    await ensureColumns();
   } catch(e) { console.error(e); }
   loading(false);
   initCanvas();
@@ -629,15 +627,14 @@ async function submitForm() {
       r7:'고유식별정보 제3자제공', r8:'일반 개인정보 국외제공',
       r9:'고유식별정보 국외제공', r10:'최종 확인'
     };
+    // 모든 데이터를 Title(제목) 하나에 저장 - 컬럼 추가 불필요
+    const consentSummary = Object.keys(labelDisplay).map(k =>
+      labelDisplay[k] + ': ' + (getVal(k)==='agree'?'동의':'미동의')
+    ).join(' | ');
+
     const fields = {
-      Title: '동의서_' + user.email + '_' + now.substring(0,10),
-      EmployeeName: user.displayName,
-      EmployeeEmail: user.email,
-      SubmittedAt: now,
-      SignatureFileUrl: signFileUrl,
-      Year: '2026'
+      Title: '[' + now.substring(0,10) + '] ' + user.email + ' | ' + user.displayName + ' | ' + consentSummary + (signFileUrl ? ' | 서명:' + signFileUrl : '')
     };
-    Object.keys(labels).forEach(k => { fields[labels[k]] = getVal(k) === 'agree' ? '동의' : '미동의'; });
 
     await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields });
 
@@ -659,19 +656,6 @@ async function submitForm() {
   loading(false);
 }
 
-async function ensureColumns() {
-  if (!siteId) return;
-  const needed = [
-    'EmployeeName','EmployeeEmail','SubmittedAt','SignatureFileUrl','Year',
-    'C1_일반수집이용_필수','C2_일반수집이용_선택','C3_고유식별수집이용',
-    'C4_민감정보수집이용','C5_일반제3자제공_필수','C6_일반제3자제공_선택',
-    'C7_고유식별제3자제공','C8_일반국외제공','C9_고유식별국외제공','C10_최종확인'
-  ];
-  let existing = [];
-  try {
-    const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/columns');
-    existing = (res.value || []).map(col => col.name);
-  } catch(e) { console.warn('컬럼 목록 조회 실패:', e.message); return; }
 
   for (const name of needed) {
     if (existing.includes(name)) continue;
