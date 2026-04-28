@@ -445,7 +445,7 @@ const GRAPH     = 'https://graph.microsoft.com/v1.0';
 const SCOPES    = ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'];
 const LIST_NAME = 'PrivacyConsents'; // SharePoint 리스트명
 
-let msalApp = null, user = null, siteId = null;
+let msalApp = null, user = null, siteId = null, driveId = null;
 let isSigned = false;
 
 // ── MSAL 초기화 ──
@@ -512,7 +512,8 @@ async function api(path, method = 'GET', body = null) {
 }
 async function apiRaw(path, method, body, contentType) {
   const t = await getToken();
-  const res = await fetch(GRAPH + path, { method, headers: { Authorization: 'Bearer ' + t, 'Content-Type': contentType }, body });
+  const url = path.startsWith('http') ? path : GRAPH + path;
+  const res = await fetch(url, { method, headers: { Authorization: 'Bearer ' + t, 'Content-Type': contentType }, body });
   if (!res.ok) throw new Error((await res.json())?.error?.message || res.status);
   return res.json();
 }
@@ -551,6 +552,13 @@ async function boot(account) {
   try {
     const site = await api('/sites/' + SITE_PATH);
     siteId = site.id;
+    // 문서 라이브러리 driveId 확보
+    try {
+      const drives = await api('/sites/' + siteId + '/drives');
+      const docDrive = (drives.value || []).find(d => d.name === '문서' || d.name === 'Documents') || drives.value?.[0];
+      if (docDrive) driveId = docDrive.id;
+      console.log('[Drive] id:', driveId, 'name:', docDrive?.name);
+    } catch(e2) { console.warn('driveId 조회 실패:', e2.message); }
     await checkAlreadySubmitted();
   } catch(e) { console.error(e); }
   loading(false);
@@ -668,8 +676,10 @@ async function downloadPdf(unused, dlFileName) {
   try {
     const t = await getToken();
     // Graph API: /sites/{id}/drive/root:/PrivacyConsents/Signatures/{파일명}:/content
-    const graphUrl = 'https://graph.microsoft.com/v1.0/sites/' + siteId
-      + '/drive/root:/PrivacyConsents/Signatures/' + dlFileName + ':/content';
+    const driveBase = driveId
+      ? 'https://graph.microsoft.com/v1.0/drives/' + driveId
+      : 'https://graph.microsoft.com/v1.0/sites/' + siteId + '/drive';
+    const graphUrl = driveBase + '/root:/PrivacyConsents/Signatures/' + dlFileName + ':/content';
 
     const res = await fetch(graphUrl, {
       headers: { Authorization: 'Bearer ' + t }
@@ -872,13 +882,13 @@ async function submitForm() {
     if (pdfBuf) {
       try {
         // 파일 업로드
+        const drivePath = driveId ? '/drives/' + driveId : '/sites/' + siteId + '/drive';
         await apiRaw(
-          '/sites/' + siteId + '/drive/root:/PrivacyConsents/Signatures/' + fileName + ':/content',
+          'https://graph.microsoft.com/v1.0' + drivePath + '/root:/PrivacyConsents/Signatures/' + fileName + ':/content',
           'PUT', pdfBuf, 'application/pdf'
         );
-        // 업로드 직후 Graph API로 파일 메타데이터 조회 → webUrl 획득
         try {
-          const fileMeta = await api('/sites/' + siteId + '/drive/root:/PrivacyConsents/Signatures/' + fileName);
+          const fileMeta = await api(drivePath + '/root:/PrivacyConsents/Signatures/' + fileName);
           signFileUrl = fileMeta.webUrl || fileMeta['@microsoft.graph.downloadUrl'] || '';
           console.log('PDF webUrl:', signFileUrl);
         } catch(e2) {
@@ -894,12 +904,13 @@ async function submitForm() {
         const sigBlob = await (await fetch(sigDataUrl)).blob();
         const sigBuf = await sigBlob.arrayBuffer();
         const imgName = 'Consent_Sign_' + user.email.replace(/[^a-z0-9]/gi,'_') + '_' + now.substring(0,10) + '.png';
+        const drivePath2 = driveId ? '/drives/' + driveId : '/sites/' + siteId + '/drive';
         await apiRaw(
-          '/sites/' + siteId + '/drive/root:/PrivacyConsents/Signatures/' + imgName + ':/content',
+          'https://graph.microsoft.com/v1.0' + drivePath2 + '/root:/PrivacyConsents/Signatures/' + imgName + ':/content',
           'PUT', sigBuf, 'image/png'
         );
         try {
-          const imgMeta = await api('/sites/' + siteId + '/drive/root:/PrivacyConsents/Signatures/' + imgName);
+          const imgMeta = await api(drivePath2 + '/root:/PrivacyConsents/Signatures/' + imgName);
           signFileUrl = imgMeta.webUrl || '';
         } catch(e2) {
           signFileUrl = 'https://startruckkorea.sharepoint.com/sites/STK-DB/Shared%20Documents/PrivacyConsents/Signatures/' + encodeURIComponent(imgName);
