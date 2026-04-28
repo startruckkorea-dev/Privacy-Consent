@@ -234,10 +234,11 @@ canvas#sig-canvas{display:block;touch-action:none}
             <b>이용목적</b>: 사회보험 가입·유지, 세금 신고·납부, 단체보험 가입 등 / <b>보유기간</b>: 고용관계 종료 후 5년
           </div>
           <div class="c-row">
-            <div class="c-label">고유식별정보의 수집 및 이용에 동의합니다<span class="badge-req">필수</span><div class="csub">외국인 임직원 해당자에 한함</div></div>
+            <div class="c-label">고유식별정보의 수집 및 이용에 동의합니다<span class="badge-opt">선택</span><div class="csub">외국인 임직원만 해당 · 내국인은 "해당없음" 선택</div></div>
             <div class="radio-wrap">
               <label><input type="radio" name="r3" value="agree" onchange="upd()"> 동의</label>
               <label><input type="radio" name="r3" value="disagree" onchange="upd()"> 미동의</label>
+              <label><input type="radio" name="r3" value="na" onchange="upd()"> 해당없음</label>
             </div>
           </div>
           <div class="divider"></div>
@@ -297,10 +298,11 @@ canvas#sig-canvas{display:block;touch-action:none}
             <b>고유식별정보 제공(필수)</b>: FMK·(주)효성ITX·(주)효성티엔에스 / 제공항목: 외국인등록번호(외국인 해당자)
           </div>
           <div class="c-row">
-            <div class="c-label">고유식별정보의 제3자 제공에 동의합니다<span class="badge-req">필수</span><div class="csub">외국인 임직원 해당자에 한함</div></div>
+            <div class="c-label">고유식별정보의 제3자 제공에 동의합니다<span class="badge-opt">선택</span><div class="csub">외국인 임직원만 해당 · 내국인은 "해당없음" 선택</div></div>
             <div class="radio-wrap">
               <label><input type="radio" name="r7" value="agree" onchange="upd()"> 동의</label>
               <label><input type="radio" name="r7" value="disagree" onchange="upd()"> 미동의</label>
+              <label><input type="radio" name="r7" value="na" onchange="upd()"> 해당없음</label>
             </div>
           </div>
         </div>
@@ -328,10 +330,11 @@ canvas#sig-canvas{display:block;touch-action:none}
             </div>
           </div>
           <div class="c-row">
-            <div class="c-label">고유식별정보의 국외 제공에 동의합니다<span class="badge-req">필수</span><div class="csub">외국인 임직원 해당자에 한함</div></div>
+            <div class="c-label">고유식별정보의 국외 제공에 동의합니다<span class="badge-opt">선택</span><div class="csub">외국인 임직원만 해당 · 내국인은 "해당없음" 선택</div></div>
             <div class="radio-wrap">
               <label><input type="radio" name="r9" value="agree" onchange="upd()"> 동의</label>
               <label><input type="radio" name="r9" value="disagree" onchange="upd()"> 미동의</label>
+              <label><input type="radio" name="r9" value="na" onchange="upd()"> 해당없음</label>
             </div>
           </div>
           <div class="all-agree" onclick="allAgree3()">
@@ -901,7 +904,11 @@ async function submitForm() {
       '제출자: ' + user.displayName + ' (' + user.email + ')',
       '제출일시: ' + new Date(now).toLocaleString('ko-KR'),
       '',
-      ...Object.keys(labelDisplay).map(k => (getVal(k)==='agree'?'[동의] ':'[미동의] ') + labelDisplay[k]),
+      ...Object.keys(labelDisplay).map(k => {
+        const v = getVal(k);
+        const prefix = v==='agree'?'[동의] ' : v==='na'?'[해당없음] ' : '[미동의] ';
+        return prefix + labelDisplay[k];
+      }),
       '',
       signFileUrl ? '서명파일: ' + signFileUrl : '서명파일: 없음'
     ].join('\n');
@@ -935,7 +942,9 @@ async function submitForm() {
     document.getElementById('form-body').style.display = 'none';
     const cs = document.getElementById('complete-screen');
     cs.style.display = 'block';
-    const lines = Object.keys(labelDisplay).map(k => (getVal(k)==='agree'?'✓ ':'✗ ') + labelDisplay[k] + ': ' + (getVal(k)==='agree'?'동의':'미동의'));
+    const valLabel = v => v==='agree'?'동의' : v==='na'?'해당없음' : '미동의';
+    const valIcon  = v => v==='agree'?'✓ ' : v==='na'?'— ' : '✗ ';
+    const lines = Object.keys(labelDisplay).map(k => valIcon(getVal(k)) + labelDisplay[k] + ': ' + valLabel(getVal(k)));
     document.getElementById('comp-detail').innerHTML =
       '<b>제출자:</b> ' + user.displayName + ' (' + user.email + ')<br>' +
       '<b>제출 일시:</b> ' + new Date(now).toLocaleString('ko-KR') + '<br><br>' +
