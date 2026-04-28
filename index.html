@@ -468,6 +468,8 @@ async function boot(account) {
     const site = await api('/sites/' + SITE_PATH);
     siteId = site.id;
     await checkAlreadySubmitted();
+    loading(true, '시스템 준비 중...');
+    await ensureColumns();
   } catch(e) { console.error(e); }
   loading(false);
   initCanvas();
@@ -637,8 +639,6 @@ async function submitForm() {
     };
     Object.keys(labels).forEach(k => { fields[labels[k]] = getVal(k) === 'agree' ? '동의' : '미동의'; });
 
-    // 컬럼 먼저 확보 후 항목 저장
-    await ensureColumns();
     await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items', 'POST', { fields });
 
     // 완료 화면
@@ -660,36 +660,27 @@ async function submitForm() {
 }
 
 async function ensureColumns() {
-  // 리스트 기존 컬럼 조회
+  if (!siteId) return;
+  const needed = [
+    'EmployeeName','EmployeeEmail','SubmittedAt','SignatureFileUrl','Year',
+    'C1_일반수집이용_필수','C2_일반수집이용_선택','C3_고유식별수집이용',
+    'C4_민감정보수집이용','C5_일반제3자제공_필수','C6_일반제3자제공_선택',
+    'C7_고유식별제3자제공','C8_일반국외제공','C9_고유식별국외제공','C10_최종확인'
+  ];
   let existing = [];
   try {
     const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/columns');
-    existing = (res.value || []).map(c => c.name);
-  } catch(e) { console.warn('컬럼 조회 실패:', e.message); }
+    existing = (res.value || []).map(col => col.name);
+  } catch(e) { console.warn('컬럼 목록 조회 실패:', e.message); return; }
 
-  const needed = [
-    {name:'EmployeeName', text:{}},
-    {name:'EmployeeEmail', text:{}},
-    {name:'SubmittedAt', text:{}},
-    {name:'SignatureFileUrl', text:{}},
-    {name:'Year', text:{}},
-    {name:'C1_일반수집이용_필수', text:{}},
-    {name:'C2_일반수집이용_선택', text:{}},
-    {name:'C3_고유식별수집이용', text:{}},
-    {name:'C4_민감정보수집이용', text:{}},
-    {name:'C5_일반제3자제공_필수', text:{}},
-    {name:'C6_일반제3자제공_선택', text:{}},
-    {name:'C7_고유식별제3자제공', text:{}},
-    {name:'C8_일반국외제공', text:{}},
-    {name:'C9_고유식별국외제공', text:{}},
-    {name:'C10_최종확인', text:{}},
-  ];
-
-  for (const col of needed) {
-    if (existing.includes(col.name)) continue;
+  for (const name of needed) {
+    if (existing.includes(name)) continue;
     try {
-      await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/columns', 'POST', col);
-    } catch(e) { console.warn('컬럼 생성 실패:', col.name, e.message); }
+      await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/columns', 'POST', {
+        name, text: { allowMultipleLines: false }
+      });
+      console.log('컬럼 생성:', name);
+    } catch(e) { console.warn('컬럼 생성 실패:', name, e.message); }
   }
 }
 </script>
