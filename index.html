@@ -137,6 +137,7 @@ canvas#sig-canvas{display:block;touch-action:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-txt{font-size:.82rem;color:#475569;font-weight:500}
 </style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -574,10 +575,20 @@ async function boot(account) {
       }
     } catch(e2) { console.warn('driveId 조회 실패:', e2.message); }
     await checkAlreadySubmitted();
+    // system_config_final.xlsx 로드
+    const _cfg = await loadSystemConfig();
+    if (_cfg) {
+      const _contact = cfgVal(_cfg,'PC_CONTACT',cfgVal(_cfg,'CONTACT_EMAIL',{email:''}));
+      const _pcEl = document.getElementById('pc-contact-email');
+      if(_pcEl && _contact.email) _pcEl.textContent='문의: '+_contact.email;
+      const _adminList = cfgEmails(_cfg,['PC_ADMIN_1','ADMIN_SP']);
+      if(_adminList.length) ADMIN_EMAILS.splice(0,ADMIN_EMAILS.length,..._adminList);
+    }
   } catch(e) { console.error(e); }
   loading(false);
-  // 관리자 버튼 표시
-  if (isAdmin()) {
+  // 관리자 버튼 표시 (config 로드 후, 대소문자 무시)
+  const _ue2 = (user.email||'').toLowerCase();
+  if (ADMIN_EMAILS.some(e=>e.toLowerCase()===_ue2)) {
     document.getElementById('nav-admin-btn').style.display = 'block';
   }
   initCanvas();
