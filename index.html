@@ -868,10 +868,6 @@ function renderAdminTable() {
     if (_adminPage < totalPages) pgHtml += `<button onclick="adminGoPage(${_adminPage+1})" style="padding:5px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:.78rem">&#8250;</button>`;
   }
   pgDiv.innerHTML = pgHtml;
-
-  } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="4" class="admin-empty" style="color:#e53e3e">오류: ${e.message}</td></tr>`;
-  }
 }
 
 // ── 서명 캔버스 ──
