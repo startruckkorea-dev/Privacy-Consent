@@ -693,9 +693,9 @@ async function downloadPdf(unused, dlFileName) {
     // 폴더 ID 기반 다운로드 (경로 파싱 문제 우회)
     let dlUrl;
     if (window._signaturesFolderId) {
-      dlUrl = 'https://graph.microsoft.com/v1.0/drives/' + driveId + '/items/' + window._signaturesFolderId + ':/' + encodeURIComponent(dlFileName) + ':/content';
+      dlUrl = 'https://graph.microsoft.com/v1.0/sites/' + siteId + '/drives/' + driveId + '/items/' + window._signaturesFolderId + ':/' + encodeURIComponent(dlFileName) + ':/content';
     } else {
-      dlUrl = dPath + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + encodeURIComponent(dlFileName) + ':/content';
+      dlUrl = 'https://graph.microsoft.com/v1.0/sites/' + siteId + '/drives/' + driveId + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + encodeURIComponent(dlFileName) + ':/content';
     }
     console.log('다운로드 경로:', dlUrl);
     const res = await fetch(dlUrl, { headers: { Authorization: 'Bearer ' + t } });
@@ -898,9 +898,10 @@ async function submitForm() {
         // 폴더 ID 기반 업로드 (경로 파싱 문제 우회)
         let uploadPath;
         if (window._signaturesFolderId) {
-          uploadPath = 'https://graph.microsoft.com/v1.0/drives/' + driveId + '/items/' + window._signaturesFolderId + ':/' + encodeURIComponent(fileName) + ':/content';
+          // Sites.ReadWrite.All 권한 기반 - site/drive/items 경로
+          uploadPath = 'https://graph.microsoft.com/v1.0/sites/' + siteId + '/drives/' + driveId + '/items/' + window._signaturesFolderId + ':/' + encodeURIComponent(fileName) + ':/content';
         } else {
-          uploadPath = dPath + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + encodeURIComponent(fileName) + ':/content';
+          uploadPath = 'https://graph.microsoft.com/v1.0/sites/' + siteId + '/drives/' + driveId + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + encodeURIComponent(fileName) + ':/content';
         }
         console.log('업로드 경로:', uploadPath);
         const upToken = await getToken();
@@ -963,7 +964,7 @@ async function submitForm() {
 
     // SharePoint 저장 - Title + SignatureFileUrl
     const fields = { Title: titleStr };
-    if (signFileUrl) fields.SignatureFileUrl = signFileUrl;
+    // if (signFileUrl) fields.SignatureFileUrl = signFileUrl; // 리스트에 필드 없는 경우 주석처리
 
     let savedItemId = null;
     try {
@@ -978,7 +979,7 @@ async function submitForm() {
         // URL은 나중에 PATCH로 추가 시도
         if (signFileUrl && savedItemId) {
           try {
-            await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items/' + savedItemId, 'PATCH', { fields: { SignatureFileUrl: signFileUrl } });
+            try { await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items/' + savedItemId, 'PATCH', { fields: { SignatureFileUrl: signFileUrl } }); } catch(e) { console.warn('SignatureFileUrl PATCH 실패:', e.message); }
           } catch(e3) { console.warn('URL PATCH 실패:', e3.message); }
         }
       } catch(e2) {
