@@ -560,6 +560,18 @@ async function boot(account) {
       const docDrive = (drives.value || []).find(d => d.name === 'AttachedFiles') || (drives.value || []).find(d => ['Documents','문서','Shared Documents'].includes(d.name)) || drives.value?.[0];
       if (docDrive) driveId = docDrive.id;
       console.log('[Drive] id:', driveId, 'name:', docDrive?.name);
+      // Signatures 폴더 ID 확보 (경로 파싱 문제 우회)
+      if (driveId) {
+        try {
+          const folderRes = await fetch('https://graph.microsoft.com/v1.0/drives/' + driveId + '/root:/PrivacyConsents_AttachedFiles/Signatures',
+            { headers: { Authorization: 'Bearer ' + (await getToken()) } });
+          if (folderRes.ok) {
+            const folderData = await folderRes.json();
+            window._signaturesFolderId = folderData.id;
+            console.log('[Signatures folder] id:', window._signaturesFolderId);
+          }
+        } catch(e3) { console.warn('Signatures 폴더 ID 조회 실패:', e3.message); }
+      }
     } catch(e2) { console.warn('driveId 조회 실패:', e2.message); }
     await checkAlreadySubmitted();
   } catch(e) { console.error(e); }
@@ -678,7 +690,13 @@ async function downloadPdf(unused, dlFileName) {
   try {
     const t = await getToken();
     const dPath = 'https://graph.microsoft.com/v1.0/drives/' + driveId;
-    const dlUrl = dPath + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + dlFileName + ':/content';
+    // 폴더 ID 기반 다운로드 (경로 파싱 문제 우회)
+    let dlUrl;
+    if (window._signaturesFolderId) {
+      dlUrl = 'https://graph.microsoft.com/v1.0/drives/' + driveId + '/items/' + window._signaturesFolderId + ':/' + encodeURIComponent(dlFileName) + ':/content';
+    } else {
+      dlUrl = dPath + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + encodeURIComponent(dlFileName) + ':/content';
+    }
     console.log('다운로드 경로:', dlUrl);
     const res = await fetch(dlUrl, { headers: { Authorization: 'Bearer ' + t } });
     if (!res.ok) throw new Error('파일을 찾을 수 없습니다. (' + res.status + ')');
@@ -877,8 +895,13 @@ async function submitForm() {
       try {
         // driveId로 정확한 경로에 PUT
         const dPath = 'https://graph.microsoft.com/v1.0/drives/' + driveId;
-        // 폴더 경로: PrivacyConsents_AttachedFiles/Signatures (AttachedFiles 드라이브 루트 기준)
-        const uploadPath = dPath + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + fileName + ':/content';
+        // 폴더 ID 기반 업로드 (경로 파싱 문제 우회)
+        let uploadPath;
+        if (window._signaturesFolderId) {
+          uploadPath = 'https://graph.microsoft.com/v1.0/drives/' + driveId + '/items/' + window._signaturesFolderId + ':/' + encodeURIComponent(fileName) + ':/content';
+        } else {
+          uploadPath = dPath + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + encodeURIComponent(fileName) + ':/content';
+        }
         console.log('업로드 경로:', uploadPath);
         const upToken = await getToken();
         const upRes = await fetch(uploadPath, {
