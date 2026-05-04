@@ -585,23 +585,8 @@ async function boot(account) {
 
 // ── 중복 제출 확인 ──
 async function checkAlreadySubmitted() {
-  try {
-    const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items?$expand=fields&$top=500');
-    const myItems = (res.value||[]).filter(i => {
-      const t = i.fields.Title || '';
-      return t.includes(user.email) || (i.fields.EmployeeEmail||'').toLowerCase() === user.email;
-    });
-    if (myItems.length > 0) {
-      const item = myItems[0].fields;
-      document.getElementById('form-body').style.display = 'none';
-      document.getElementById('already-done').style.display = 'block';
-      const dt = item.SubmittedAt ? new Date(item.SubmittedAt).toLocaleString('ko-KR') : '';
-      document.getElementById('already-date').innerHTML = '제출 일시: <b>' + dt + '</b><br>이미 동의서가 기록되어 있습니다.<br>수정이 필요한 경우 HR 담당자에게 문의해 주세요.';
-    }
-  } catch(e) {
-    // 리스트 없거나 에러 → 새 제출 가능
-    console.warn('리스트 확인 실패 (신규 제출 가능):', e.message);
-  }
+  // 중복 제출 제한 없음 — 항상 신규 제출 가능
+  console.log('[Consent] 중복 제출 체크 비활성화 — 항상 신규 제출 허용');
 }
 
 // ── 진행률 ──
@@ -834,7 +819,10 @@ async function submitForm() {
     loading(true, 'PDF 생성 중...');
     let pdfBuf = null;
     let signFileUrl = '';
-    const fileName = 'Consent_' + user.email.replace(/[^a-z0-9]/gi,'_') + '_' + now.substring(0,10) + '.pdf';
+    const _dt = new Date(now);
+    const _pad = n => String(n).padStart(2,'0');
+    const _dateStr = now.substring(0,10) + '-' + _pad(_dt.getHours()) + _pad(_dt.getMinutes());
+    const fileName = 'Consent_' + user.email.replace(/[^a-z0-9]/gi,'_') + '_' + _dateStr + '.pdf';
     try {
       const formEl = document.getElementById('form-body');
       const submitArea = formEl.querySelector('.submit-area');
@@ -946,7 +934,7 @@ async function submitForm() {
     };
     // 모든 데이터를 Title(제목) 하나에 저장 - 컬럼 추가 불필요
     // Title: 255자 이내 (SharePoint 제한)
-    const titleStr = ('[' + now.substring(0,10) + '] ' + user.email).substring(0, 255);
+    const titleStr = ('[' + _dateStr + '] ' + user.email).substring(0, 255);
 
     // 동의 결과 전체 텍스트 (multiline용)
     const consentDetail = [
