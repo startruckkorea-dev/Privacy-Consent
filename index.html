@@ -575,19 +575,27 @@ async function boot(account) {
       }
     } catch(e2) { console.warn('driveId 조회 실패:', e2.message); }
     await checkAlreadySubmitted();
-    // system_config_final.xlsx 로드
+  } catch(e) { console.error(e); }
+  loading(false);
+
+  // system_config_final.xlsx 로드 (try 블록 밖에서 독립 실행)
+  try {
     const _cfg = await loadSystemConfig();
     if (_cfg) {
+      // 문의 이메일 업데이트
       const _contact = cfgVal(_cfg,'PC_CONTACT',cfgVal(_cfg,'CONTACT_EMAIL',{email:''}));
       const _pcEl = document.getElementById('pc-contact-email');
       if(_pcEl && _contact.email) _pcEl.textContent='문의: '+_contact.email;
+      // 관리자 계정 업데이트
       const _adminList = cfgEmails(_cfg,['PC_ADMIN_1','ADMIN_SP']);
       if(_adminList.length) ADMIN_EMAILS.splice(0,ADMIN_EMAILS.length,..._adminList);
+      console.log('[Config] ADMIN_EMAILS:', ADMIN_EMAILS);
     }
-  } catch(e) { console.error(e); }
-  loading(false);
+  } catch(e) { console.warn('[Config] 로드 실패:', e.message); }
+
   // 관리자 버튼 표시 (config 로드 후, 대소문자 무시)
   const _ue2 = (user.email||'').toLowerCase();
+  console.log('[Admin check] user:', _ue2, 'admins:', ADMIN_EMAILS);
   if (ADMIN_EMAILS.some(e=>e.toLowerCase()===_ue2)) {
     document.getElementById('nav-admin-btn').style.display = 'block';
   }
