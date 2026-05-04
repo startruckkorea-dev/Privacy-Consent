@@ -157,7 +157,10 @@ canvas#sig-canvas{display:block;touch-action:none}
   <div class="topnav">
     <div class="nav-brand">
       <div class="nav-icon">📋</div>
-      <div class="nav-title">STK 개인정보 동의서</div>
+      <div>
+        <div class="nav-title">STK 개인정보 동의서</div>
+        <div id="pc-contact-email" style="font-size:.62rem;color:rgba(255,255,255,.55);margin-top:1px">문의: (로딩중...)</div>
+      </div>
     </div>
     <div class="nav-right">
       <div class="nav-user">
@@ -404,7 +407,12 @@ canvas#sig-canvas{display:block;touch-action:none}
         <span class="admin-title">동의서 제출 현황</span>
         <span class="admin-badge" id="admin-badge">관리자 전용</span>
       </div>
-
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+        <input id="admin-search" placeholder="제출자 이름 또는 이메일 검색..." oninput="renderAdminTable()"
+          style="flex:1;padding:7px 12px;border:1px solid #e2e8f0;border-radius:20px;font-size:.78rem;font-family:inherit;outline:none">
+        <button onclick="loadAdminData()" style="background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:7px 16px;font-size:.78rem;color:#64748b;cursor:pointer;font-family:inherit;white-space:nowrap">새로고침</button>
+        <button onclick="hideAdmin()" style="background:#0078d4;color:#fff;border:none;border-radius:20px;padding:7px 16px;font-size:.78rem;cursor:pointer;font-family:inherit;white-space:nowrap">닫기</button>
+      </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead><tr>
@@ -416,10 +424,7 @@ canvas#sig-canvas{display:block;touch-action:none}
           <tbody id="admin-tbody"><tr><td colspan="4" class="admin-empty">데이터 불러오는 중...</td></tr></tbody>
         </table>
       </div>
-      <div style="margin-top:12px;text-align:right">
-        <button onclick="loadAdminData()" style="background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:6px 16px;font-size:.78rem;color:#64748b;cursor:pointer;font-family:inherit">새로고침</button>
-        <button onclick="hideAdmin()" style="background:#0078d4;color:#fff;border:none;border-radius:20px;padding:6px 16px;font-size:.78rem;cursor:pointer;font-family:inherit;margin-left:6px">닫기</button>
-      </div>
+      <div id="admin-pagination" style="display:flex;justify-content:center;gap:6px;margin-top:12px;flex-wrap:wrap"></div>
     </div>
 
     <!-- 완료 화면 -->
@@ -729,6 +734,8 @@ function showAdmin() {
   loadAdminData();
 }
 
+function adminGoPage(n) { _adminPage = n; renderAdminTable(); }
+
 function hideAdmin() {
   document.getElementById('admin-screen').style.display = 'none';
   document.getElementById('form-body').style.display = 'block';
@@ -759,29 +766,62 @@ async function downloadPdf(unused, dlFileName) {
   }
 }
 
+let _adminAllItems = [];
+let _adminPage = 1;
+const ADMIN_PAGE_SIZE = 20;
+
 async function loadAdminData() {
   const tbody = document.getElementById('admin-tbody');
   tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">불러오는 중...</td></tr>';
   try {
-    // PrivacyConsents 리스트 전체 조회
     const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items?$expand=fields&$top=500');
     const items = res.value || [];
-
     if (!items.length) {
       tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">제출된 동의서가 없습니다</td></tr>';
       return;
     }
-
-
-
-    // 제출일 기준 내림차순 정렬 (최신 먼저)
+    // 최신순 정렬
     items.sort((a, b) => {
       const da = a.fields.SubmittedAt || a.fields.Title || '';
       const db = b.fields.SubmittedAt || b.fields.Title || '';
       return db.localeCompare(da);
     });
-    let rows = '';
-    for (const item of items) {
+    _adminAllItems = items;
+    _adminPage = 1;
+    renderAdminTable();
+    return;
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">오류: ' + e.message + '</td></tr>';
+    return;
+  }
+}
+
+function renderAdminTable() {
+  const tbody = document.getElementById('admin-tbody');
+  const pgDiv = document.getElementById('admin-pagination');
+  const q = (document.getElementById('admin-search')?.value || '').toLowerCase();
+  const filtered = q
+    ? _adminAllItems.filter(item => {
+        const f = item.fields;
+        const name = (f.EmployeeName || '').toLowerCase();
+        const email = (f.EmployeeEmail || f.Title || '').toLowerCase();
+        return name.includes(q) || email.includes(q);
+      })
+    : _adminAllItems;
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
+  if (_adminPage > totalPages) _adminPage = 1;
+  const start = (_adminPage - 1) * ADMIN_PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + ADMIN_PAGE_SIZE);
+
+  if (!pageItems.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">검색 결과가 없습니다</td></tr>';
+    pgDiv.innerHTML = '';
+    return;
+  }
+  let rows = '';
+  for (const item of pageItems) {
       const f = item.fields;
       // Title에서 이메일/이름 파싱 (ConsentDetail 없을 경우 대비)
       // Title 형식: "[2026-04-28] email@domain.com"
@@ -816,7 +856,18 @@ async function loadAdminData() {
         }</td>
       </tr>`;
     }
-    tbody.innerHTML = rows;
+  tbody.innerHTML = rows;
+
+  // 페이지네이션
+  let pgHtml = '';
+  if (totalPages > 1) {
+    if (_adminPage > 1) pgHtml += `<button onclick="adminGoPage(${_adminPage-1})" style="padding:5px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:.78rem">&#8249;</button>`;
+    for (let i = 1; i <= totalPages; i++) {
+      pgHtml += `<button onclick="adminGoPage(${i})" style="padding:5px 12px;border:1px solid ${i===_adminPage?'#0078d4':'#e2e8f0'};border-radius:8px;background:${i===_adminPage?'#0078d4':'#fff'};color:${i===_adminPage?'#fff':'#374151'};cursor:pointer;font-size:.78rem;font-weight:${i===_adminPage?'700':'400'}">${i}</button>`;
+    }
+    if (_adminPage < totalPages) pgHtml += `<button onclick="adminGoPage(${_adminPage+1})" style="padding:5px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:.78rem">&#8250;</button>`;
+  }
+  pgDiv.innerHTML = pgHtml;
 
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="4" class="admin-empty" style="color:#e53e3e">오류: ${e.message}</td></tr>`;
