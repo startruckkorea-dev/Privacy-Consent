@@ -782,9 +782,10 @@ async function loadAdminData() {
     }
     // 최신순 정렬
     items.sort((a, b) => {
-      const da = a.fields.SubmittedAt || a.fields.Title || '';
-      const db = b.fields.SubmittedAt || b.fields.Title || '';
-      return db.localeCompare(da);
+      // SubmittedAt 있으면 날짜 비교, 없으면 SP 아이템 ID(생성순) 비교
+      const da = a.fields.SubmittedAt ? new Date(a.fields.SubmittedAt).getTime() : (a.id || 0);
+      const db = b.fields.SubmittedAt ? new Date(b.fields.SubmittedAt).getTime() : (b.id || 0);
+      return db - da;
     });
     _adminAllItems = items;
     _adminPage = 1;
