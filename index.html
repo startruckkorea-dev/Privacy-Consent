@@ -553,7 +553,6 @@ async function loadSystemConfig() {
       cfg[key]={name:(row[1]||'').toString().trim(),email:(row[2]||'').toString().trim()};
     });
     _sysConfig=cfg;
-    console.log('[Config] Loaded:',Object.keys(cfg).length,'entries');
     return cfg;
   } catch(e) {
     console.warn('[Config] 로드 실패:',e.message);
@@ -590,7 +589,6 @@ async function boot(account) {
   // account 정보도 user에 복사 (isAdmin에서 참조)
   user.username = (account.username || '').toLowerCase();
   user.idTokenClaims = account.idTokenClaims || {};
-  console.log('[Boot] user.email:', user.email, '| username:', user.username);
   const initials = (user.displayName || '?').split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase();
   document.getElementById('nav-avatar').textContent = initials;
   document.getElementById('nav-name').textContent = user.displayName;
@@ -609,7 +607,6 @@ async function boot(account) {
       const drives = await api('/sites/' + siteId + '/drives');
       const docDrive = (drives.value || []).find(d => d.name === 'AttachedFiles') || (drives.value || []).find(d => ['Documents','문서','Shared Documents'].includes(d.name)) || drives.value?.[0];
       if (docDrive) driveId = docDrive.id;
-      console.log('[Drive] id:', driveId, 'name:', docDrive?.name);
       // Signatures 폴더 ID 확보 (경로 파싱 문제 우회)
       if (driveId) {
         try {
@@ -618,7 +615,6 @@ async function boot(account) {
           if (folderRes.ok) {
             const folderData = await folderRes.json();
             window._signaturesFolderId = folderData.id;
-            console.log('[Signatures folder] id:', window._signaturesFolderId);
           }
         } catch(e3) { console.warn('Signatures 폴더 ID 조회 실패:', e3.message); }
       }
@@ -638,14 +634,18 @@ async function boot(account) {
       // 관리자 계정 업데이트
       const _adminList = cfgEmails(_cfg,['PC_ADMIN_1','ADMIN_SP']);
       if(_adminList.length) ADMIN_EMAILS.splice(0,ADMIN_EMAILS.length,..._adminList);
-      console.log('[Config] ADMIN_EMAILS:', ADMIN_EMAILS);
     }
   } catch(e) { console.warn('[Config] 로드 실패:', e.message); }
 
   // 관리자 버튼 표시 (config 로드 후, 대소문자 무시)
-  const _ue2 = (user.email||'').toLowerCase();
-  console.log('[Admin check] user:', _ue2, 'admins:', ADMIN_EMAILS);
-  if (ADMIN_EMAILS.some(e=>e.toLowerCase()===_ue2)) {
+  // email, UPN, username 중 하나라도 일치하면 관리자
+  const _adminCandidates = [
+    user.email,
+    user.username,
+    user.idTokenClaims?.preferred_username,
+    user.idTokenClaims?.upn,
+  ].map(v=>(v||'').toLowerCase()).filter(Boolean);
+  if (ADMIN_EMAILS.some(e => _adminCandidates.includes(e.toLowerCase()))) {
     document.getElementById('nav-admin-btn').style.display = 'block';
   }
   initCanvas();
@@ -654,7 +654,6 @@ async function boot(account) {
 // ── 중복 제출 확인 ──
 async function checkAlreadySubmitted() {
   // 중복 제출 제한 없음 — 항상 신규 제출 가능
-  console.log('[Consent] 중복 제출 체크 비활성화 — 항상 신규 제출 허용');
 }
 
 // ── 진행률 ──
@@ -721,7 +720,6 @@ function isAdmin() {
     user.idTokenClaims?.upn,
     user.idTokenClaims?.email,
   ].map(e => (e||'').toLowerCase()).filter(Boolean);
-  console.log('[Admin check] toCheck:', toCheck);
   return toCheck.some(e => emails.includes(e));
 }
 
@@ -752,7 +750,6 @@ async function downloadPdf(unused, dlFileName) {
     } else {
       dlUrl = 'https://graph.microsoft.com/v1.0/sites/' + siteId + '/drives/' + driveId + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + encodeURIComponent(dlFileName) + ':/content';
     }
-    console.log('다운로드 경로:', dlUrl);
     const res = await fetch(dlUrl, { headers: { Authorization: 'Bearer ' + t } });
     if (!res.ok) throw new Error('파일을 찾을 수 없습니다. (' + res.status + ')');
     const blob = await res.blob();
@@ -1002,7 +999,6 @@ async function submitForm() {
         } else {
           uploadPath = 'https://graph.microsoft.com/v1.0/sites/' + siteId + '/drives/' + driveId + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + encodeURIComponent(fileName) + ':/content';
         }
-        console.log('업로드 경로:', uploadPath);
         const upToken = await getToken();
         const upRes = await fetch(uploadPath, {
           method: 'PUT',
@@ -1015,7 +1011,6 @@ async function submitForm() {
         if (upRes.ok) {
           const upJson = await upRes.json();
           signFileUrl = upJson.webUrl || upJson['@microsoft.graph.downloadUrl'] || fileName;
-          console.log('Graph PUT 성공:', signFileUrl);
         } else {
           const errText = await upRes.text();
           console.warn('Graph PUT 실패:', upRes.status, errText.substring(0,200));
