@@ -526,6 +526,50 @@ function loading(on, txt = '처리 중...') {
 }
 
 // ── 부팅 ──
+// ── System Config ──
+let _sysConfig = null;
+async function loadSystemConfig() {
+  if (_sysConfig) return _sysConfig;
+  try {
+    const t = await getToken();
+    const drivesRes = await api('/sites/' + siteId + '/drives');
+    let docDrive = (drivesRes.value||[]).find(d=>['Documents','문서','Shared Documents'].includes(d.name));
+    if (!docDrive && drivesRes.value) docDrive = drivesRes.value[0];
+    const res = await fetch('https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/system_config_final.xlsx:/content',
+      {headers:{Authorization:'Bearer '+t}});
+    if (!res.ok) throw new Error('system_config_final.xlsx 없음 ('+res.status+')');
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(buf,{type:'array'});
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
+    const cfg = {};
+    rows.forEach(row=>{
+      const key=(row[0]||'').toString().trim();
+      if(!key||key.startsWith('[')||key==='설정 키 (KEY)'||key.startsWith('이 파일')||key.startsWith('STK Korea')) return;
+      cfg[key]={name:(row[1]||'').toString().trim(),email:(row[2]||'').toString().trim()};
+    });
+    _sysConfig=cfg;
+    console.log('[Config] Loaded:',Object.keys(cfg).length,'entries');
+    return cfg;
+  } catch(e) {
+    console.warn('[Config] 로드 실패:',e.message);
+    return null;
+  }
+}
+function cfgVal(cfg,key,defaultObj) {
+  if(!cfg||!cfg[key]) return defaultObj;
+  const v=cfg[key];
+  return {...defaultObj, name:v.name||defaultObj.name, email:v.email||defaultObj.email};
+}
+function cfgEmails(cfg,keys) {
+  const expanded=[];
+  keys.forEach(k=>{
+    const m=k.match(/^(.+_ADMIN_)[0-9]+$/);
+    if(m){const p=m[1];let n=1;while(cfg&&cfg[p+n]){expanded.push(p+n);n++;}}
+    else expanded.push(k);
+  });
+  return [...new Set(expanded)].map(k=>(cfg&&cfg[k]?cfg[k].email:'')).filter(Boolean);
+}
+
 async function boot(account) {
   user = account;
   document.getElementById('login-screen').style.display = 'none';
@@ -661,7 +705,7 @@ function allAgree3() {
 }
 
 // ── 관리자 ──
-const ADMIN_EMAILS = ['robin.joo@hyosung.com','eunjung.seo@hyosung.com','admin@startruckkorea.onmicrosoft.com'];
+const ADMIN_EMAILS = [];
 
 function isAdmin() {
   const emails = ADMIN_EMAILS.map(e => e.toLowerCase());
