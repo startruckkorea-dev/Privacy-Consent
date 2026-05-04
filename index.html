@@ -557,7 +557,7 @@ async function boot(account) {
     // 문서 라이브러리 driveId 확보
     try {
       const drives = await api('/sites/' + siteId + '/drives');
-      const docDrive = (drives.value || []).find(d => d.name === '문서' || d.name === 'Documents') || drives.value?.[0];
+      const docDrive = (drives.value || []).find(d => d.name === 'AttachedFiles') || (drives.value || []).find(d => ['Documents','문서','Shared Documents'].includes(d.name)) || drives.value?.[0];
       if (docDrive) driveId = docDrive.id;
       console.log('[Drive] id:', driveId, 'name:', docDrive?.name);
     } catch(e2) { console.warn('driveId 조회 실패:', e2.message); }
@@ -678,7 +678,7 @@ async function downloadPdf(unused, dlFileName) {
   try {
     const t = await getToken();
     const dPath = 'https://graph.microsoft.com/v1.0/drives/' + driveId;
-    const dlUrl = dPath + '/root:/PrivacyConsents/Signatures/' + dlFileName + ':/content';
+    const dlUrl = dPath + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + dlFileName + ':/content';
     console.log('다운로드 경로:', dlUrl);
     const res = await fetch(dlUrl, { headers: { Authorization: 'Bearer ' + t } });
     if (!res.ok) throw new Error('파일을 찾을 수 없습니다. (' + res.status + ')');
@@ -733,7 +733,7 @@ async function loadAdminData() {
       if (!pdfUrl && email) {
         const safeName = email.replace(/[^a-z0-9]/gi, '_');
         const dateStr = dateFromTitle || new Date().toISOString().substring(0,10);
-        pdfUrl = 'https://startruckkorea.sharepoint.com/sites/STK-DB/Shared%20Documents/PrivacyConsents/Signatures/Consent_' + safeName + '_' + dateStr + '.pdf';
+        pdfUrl = 'https://startruckkorea.sharepoint.com/sites/STK-DB/AttachedFiles/PrivacyConsents_AttachedFiles/Signatures/Consent_' + safeName + '_' + dateStr + '.pdf';
       }
 
       const dtShort = dt !== '-' ? dt.replace(/^\d{4}\. /,'').replace(/\. /,'/').replace(/\.$/,'') : '-';
@@ -877,8 +877,8 @@ async function submitForm() {
       try {
         // driveId로 정확한 경로에 PUT
         const dPath = 'https://graph.microsoft.com/v1.0/drives/' + driveId;
-        // 폴더 경로: PrivacyConsents/Signatures (드라이브 루트 기준)
-        const uploadPath = dPath + '/root:/PrivacyConsents/Signatures/' + fileName + ':/content';
+        // 폴더 경로: PrivacyConsents_AttachedFiles/Signatures (AttachedFiles 드라이브 루트 기준)
+        const uploadPath = dPath + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + fileName + ':/content';
         console.log('업로드 경로:', uploadPath);
         const upToken = await getToken();
         const upRes = await fetch(uploadPath, {
