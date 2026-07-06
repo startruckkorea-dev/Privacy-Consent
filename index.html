@@ -193,207 +193,36 @@ canvas#sig-canvas{display:block;touch-action:none}
       <!-- Header -->
       <div class="hdr-card">
         <div class="hdr-top">
-          <div class="hdr-title">임직원 개인정보 처리 동의서</div>
-          <span class="hdr-badge">2026년도</span>
+          <div class="hdr-title" id="hdr-title-text">임직원 개인정보 처리 동의서</div>
+          <span class="hdr-badge" id="hdr-badge-text">2026년도</span>
         </div>
-        <div class="hdr-desc">아래 각 항목을 확인하신 후 동의 여부를 선택해 주세요.<br>필수 항목에 동의하지 않으실 경우 근로계약의 체결·유지가 불가능할 수 있습니다.</div>
+        <div class="hdr-desc" id="hdr-desc-text">아래 각 항목을 확인하신 후 동의 여부를 선택해 주세요.<br>필수 항목에 동의하지 않으실 경우 근로계약의 체결·유지가 불가능할 수 있습니다.</div>
         <div class="progress-wrap">
-          <div class="prog-label"><span id="prog-text">0 / 10 항목 완료</span><span id="prog-pct">0%</span></div>
+          <div class="prog-label"><span id="prog-text">0 / 0 항목 완료</span><span id="prog-pct">0%</span></div>
           <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
         </div>
       </div>
 
-      <!-- 1. 수집·이용 -->
-      <div class="section">
-        <div class="sec-hdr">
-          <div class="sec-num">1</div>
-          <span class="sec-title">개인정보 수집 및 이용에 대한 동의</span>
-          <span class="sec-st todo" id="st1">미완료</span>
-        </div>
-        <div class="sec-body">
-          <!-- 1-1 일반 필수 -->
-          <div class="info-box">
-            <b>수집항목(필수)</b>: 성명·생년월일·주소·연락처·이메일·계좌정보·사진·지문·성별·국적, 입퇴사일·부서·직급·사번·급여정보, 학력·경력·어학·자격사항, 병역·가족사항, 이력서·자기소개서 기재사항, 경조 증빙서류 기재 정보, 정보처리기기를 통해 처리되는 본인 및 제3자의 개인정보<br>
-            <b>이용목적</b>: 인사관리, 경력관리, 급여관리, 복리후생, 세금·보험처리, 법규준수, 업무지원, 보안·연락·감사<br>
-            <b>보유기간</b>: 고용관계 종료 후 5년
-          </div>
-          <div class="c-row">
-            <div class="c-label">일반 개인정보 필수적 수집 및 이용에 동의합니다<span class="badge-req">필수</span><div class="csub">미동의 시 근로계약 체결·유지 불가</div></div>
-            <div class="radio-wrap">
-              <label><input type="radio" name="r1" value="agree" onchange="upd()"> 동의</label>
-              <label><input type="radio" name="r1" value="disagree" onchange="upd()"> 미동의</label>
-            </div>
-          </div>
-          <div class="divider"></div>
-          <!-- 1-1 선택 -->
-          <div class="info-box">
-            <b>수집항목(선택)</b>: 보훈사항, 생명보험 관련 정보(유형·수익자·연락처), 취미·특기<br>
-            <b>이용목적</b>: 보훈 대상자 처우 제공, 임직원 복지 지원 / <b>보유기간</b>: 고용관계 종료 후 5년
-          </div>
-          <div class="c-row">
-            <div class="c-label">일반 개인정보 선택적 수집 및 이용에 동의합니다<span class="badge-opt">선택</span><div class="csub">미동의 시 일부 복지 혜택 제한 가능</div></div>
-            <div class="radio-wrap">
-              <label><input type="radio" name="r2" value="agree" onchange="upd()"> 동의</label>
-              <label><input type="radio" name="r2" value="disagree" onchange="upd()"> 미동의</label>
-            </div>
-          </div>
-          <div class="all-agree" onclick="allAgree('r1','r2','all1')">
-            <input type="checkbox" id="all1" onclick="event.stopPropagation();allAgree('r1','r2','all1')">
-            <span class="all-agree-label">1-1항 전체 동의</span>
-          </div>
-          <div class="divider"></div>
-          <!-- 1-2 고유식별 -->
-          <div class="info-box">
-            <b>고유식별정보(필수)</b>: 외국인등록번호 (외국인 임직원 해당자)<br>
-            <b>이용목적</b>: 사회보험 가입·유지, 세금 신고·납부, 단체보험 가입 등 / <b>보유기간</b>: 고용관계 종료 후 5년
-          </div>
-          <div class="c-row">
-            <div class="c-label">고유식별정보의 수집 및 이용에 동의합니다<span class="badge-opt">선택</span><div class="csub">외국인 임직원만 해당 · 내국인은 "해당없음" 선택</div></div>
-            <div class="radio-wrap">
-              <label><input type="radio" name="r3" value="agree" onchange="upd()"> 동의</label>
-              <label><input type="radio" name="r3" value="disagree" onchange="upd()"> 미동의</label>
-              <label><input type="radio" name="r3" value="na" onchange="upd()"> 해당없음</label>
-            </div>
-          </div>
-          <div class="divider"></div>
-          <!-- 1-3 민감 -->
-          <div class="info-box">
-            <b>민감정보(필수)</b>: 장애 여부·등급, 장애인등록번호(해당자), 장애등록사항<br>
-            <b>이용목적</b>: 인사관리, 근무환경 개선, 복지 이행, 법령 의무 이행 / <b>보유기간</b>: 고용관계 종료 후 5년
-          </div>
-          <div class="c-row">
-            <div class="c-label">민감정보의 수집 및 이용에 동의합니다<span class="badge-req">필수</span><div class="csub">미동의 시 근로계약 체결·유지 불가</div></div>
-            <div class="radio-wrap">
-              <label><input type="radio" name="r4" value="agree" onchange="upd()"> 동의</label>
-              <label><input type="radio" name="r4" value="disagree" onchange="upd()"> 미동의</label>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- 동의 항목 섹션: STK_consent_contents.xlsx 로부터 동적으로 생성됨 (renderConsentForm 참고) -->
+      <div id="sections-container"></div>
 
-      <!-- 2. 제3자 제공 -->
-      <div class="section">
-        <div class="sec-hdr">
-          <div class="sec-num">2</div>
-          <span class="sec-title">개인정보 제3자 제공에 대한 동의</span>
-          <span class="sec-st todo" id="st2">미완료</span>
+      <!-- 서명 패드 (동적으로 마지막 섹션 내부로 이동됨) -->
+      <div class="sign-wrap" id="sign-section" style="opacity:.4;pointer-events:none;display:none">
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0 8px;border-bottom:1px solid #f1f5f9;margin-bottom:12px">
+          <span style="font-size:.82rem;color:#64748b;font-weight:500;width:48px;flex-shrink:0">성명</span>
+          <span id="sign-user-name" style="font-size:.95rem;font-weight:700;color:#1e293b;letter-spacing:.3px"></span>
         </div>
-        <div class="sec-body">
-          <div class="info-box">
-            <b>제공받는 자(필수)</b>: FMK·(주)효성ITX·(주)효성티엔에스 / AON·KB손해보험·메리츠화재·AIA생명·Marsh Korea·현대해상·DB생명보험 / 미래에셋증권 / KMI 한국의학연구소 등 건강검진기관<br>
-            <b>제공목적</b>: 주주사간 업무협력·인사관리, 단체보험, 퇴직연금, 건강검진<br>
-            <b>제공항목</b>: 성명·이메일·전화번호·급여정보·주소·부서·직급·가족정보 등 / <b>보유기간</b>: 이용목적 달성 및 법령 보존기간 종료 시까지
-          </div>
-          <div class="c-row">
-            <div class="c-label">일반 개인정보 필수적 제3자 제공에 동의합니다<span class="badge-req">필수</span></div>
-            <div class="radio-wrap">
-              <label><input type="radio" name="r5" value="agree" onchange="upd()"> 동의</label>
-              <label><input type="radio" name="r5" value="disagree" onchange="upd()"> 미동의</label>
-            </div>
-          </div>
-          <div class="divider"></div>
-          <div class="info-box">
-            <b>제공받는 자(선택)</b>: 현대이지웰㈜(온라인복지관·건강검진 예약) / 윌슨어스·러닝뱅크·유밥(임직원 교육)<br>
-            <b>제공항목</b>: 성명·전화번호·이메일·부서·직급·가족정보·선택교육항목 등
-          </div>
-          <div class="c-row">
-            <div class="c-label">일반 개인정보 선택적 제3자 제공에 동의합니다<span class="badge-opt">선택</span><div class="csub">미동의 시 일부 복지·교육 혜택 제한 가능</div></div>
-            <div class="radio-wrap">
-              <label><input type="radio" name="r6" value="agree" onchange="upd()"> 동의</label>
-              <label><input type="radio" name="r6" value="disagree" onchange="upd()"> 미동의</label>
-            </div>
-          </div>
-          <div class="all-agree" onclick="allAgree('r5','r6','all2')">
-            <input type="checkbox" id="all2" onclick="event.stopPropagation();allAgree('r5','r6','all2')">
-            <span class="all-agree-label">2-1항 전체 동의</span>
-          </div>
-          <div class="divider"></div>
-          <div class="info-box">
-            <b>고유식별정보 제공(필수)</b>: FMK·(주)효성ITX·(주)효성티엔에스 / 제공항목: 외국인등록번호(외국인 해당자)
-          </div>
-          <div class="c-row">
-            <div class="c-label">고유식별정보의 제3자 제공에 동의합니다<span class="badge-opt">선택</span><div class="csub">외국인 임직원만 해당 · 내국인은 "해당없음" 선택</div></div>
-            <div class="radio-wrap">
-              <label><input type="radio" name="r7" value="agree" onchange="upd()"> 동의</label>
-              <label><input type="radio" name="r7" value="disagree" onchange="upd()"> 미동의</label>
-              <label><input type="radio" name="r7" value="na" onchange="upd()"> 해당없음</label>
-            </div>
-          </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:0 0 12px">
+          <span style="font-size:.82rem;color:#64748b;font-weight:500;width:48px;flex-shrink:0">일자</span>
+          <span id="sign-date" style="font-size:.88rem;color:#475569"></span>
         </div>
-      </div>
-
-      <!-- 3. 국외 제공 -->
-      <div class="section">
-        <div class="sec-hdr">
-          <div class="sec-num">3</div>
-          <span class="sec-title">개인정보 국외 제공에 대한 동의</span>
-          <span class="sec-st todo" id="st3">미완료</span>
+        <div class="sign-label" id="sign-label-text">서명 (마우스 또는 터치로 서명해 주세요)</div>
+        <div class="sign-canvas-wrap">
+          <canvas id="sig-canvas" width="720" height="160"></canvas>
+          <div class="sign-hint" id="sign-hint">이곳에 서명해 주세요</div>
         </div>
-        <div class="sec-body">
-          <div class="info-box">
-            <b>제공받는 자</b>: 회사 해외 주주사(Daimler Truck AG) 및 계열사 (독일 본사·중국·싱가포르 등 40여 개국)<br>
-            <b>이용목적</b>: 주주사간 업무협력, 인사교류, 교육, 법령 준수 확인·감사<br>
-            <b>일반 제공항목</b>: 성명·이메일·전화번호·급여정보·주소·부서·직급 등<br>
-            <b>고유식별 제공항목</b>: 외국인등록번호(외국인 해당자) / <b>보유기간</b>: 이용목적 달성 및 법령 보존기간 종료 시까지
-          </div>
-          <div class="c-row">
-            <div class="c-label">일반 개인정보의 국외 제공에 동의합니다<span class="badge-req">필수</span></div>
-            <div class="radio-wrap">
-              <label><input type="radio" name="r8" value="agree" onchange="upd()"> 동의</label>
-              <label><input type="radio" name="r8" value="disagree" onchange="upd()"> 미동의</label>
-            </div>
-          </div>
-          <div class="c-row">
-            <div class="c-label">고유식별정보의 국외 제공에 동의합니다<span class="badge-opt">선택</span><div class="csub">외국인 임직원만 해당 · 내국인은 "해당없음" 선택</div></div>
-            <div class="radio-wrap">
-              <label><input type="radio" name="r9" value="agree" onchange="upd()"> 동의</label>
-              <label><input type="radio" name="r9" value="disagree" onchange="upd()"> 미동의</label>
-              <label><input type="radio" name="r9" value="na" onchange="upd()"> 해당없음</label>
-            </div>
-          </div>
-          <div class="all-agree" onclick="allAgree3()">
-            <input type="checkbox" id="all3" onclick="event.stopPropagation();allAgree3()">
-            <span class="all-agree-label">3항 전체 동의</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 4. 서명 -->
-      <div class="section">
-        <div class="sec-hdr">
-          <div class="sec-num">✍</div>
-          <span class="sec-title">최종 확인 및 서명</span>
-          <span class="sec-st todo" id="st4">미완료</span>
-        </div>
-        <div class="sec-body">
-          <div class="info-box">
-            귀하의 가족 등 제3자의 개인정보를 회사에 제공하는 경우, 사전에 해당 가족 등에게 개인정보 제공 사실 및 항목, 이용목적, 보유기간을 충분히 설명하고 동의를 받아야 합니다. 본 동의서를 제출함으로써 귀하는 그와 같은 설명을 제공하고 적법한 동의를 받았음을 확인합니다.
-          </div>
-          <div class="c-row" style="border-bottom:none">
-            <div class="c-label"><b>본인은 상기 내용을 상세히 읽고 충분히 이해하였으며, 본인의 자유로운 의사에 의해 동의합니다.</b></div>
-            <div class="radio-wrap">
-              <label><input type="radio" name="r10" value="agree" onchange="upd()"> 확인</label>
-            </div>
-          </div>
-          <!-- 서명 패드 -->
-          <div class="sign-wrap" id="sign-section" style="opacity:.4;pointer-events:none">
-            <div style="display:flex;align-items:center;gap:12px;padding:10px 0 8px;border-bottom:1px solid #f1f5f9;margin-bottom:12px">
-              <span style="font-size:.82rem;color:#64748b;font-weight:500;width:48px;flex-shrink:0">성명</span>
-              <span id="sign-user-name" style="font-size:.95rem;font-weight:700;color:#1e293b;letter-spacing:.3px"></span>
-            </div>
-            <div style="display:flex;align-items:center;gap:12px;padding:0 0 12px">
-              <span style="font-size:.82rem;color:#64748b;font-weight:500;width:48px;flex-shrink:0">일자</span>
-              <span id="sign-date" style="font-size:.88rem;color:#475569"></span>
-            </div>
-            <div class="sign-label">서명 (마우스 또는 터치로 서명해 주세요)</div>
-            <div class="sign-canvas-wrap">
-              <canvas id="sig-canvas" width="720" height="160"></canvas>
-              <div class="sign-hint" id="sign-hint">이곳에 서명해 주세요</div>
-            </div>
-            <div class="sign-actions">
-              <button class="btn-clear" onclick="clearSign()">서명 지우기</button>
-            </div>
-          </div>
+        <div class="sign-actions">
+          <button class="btn-clear" onclick="clearSign()">서명 지우기</button>
         </div>
       </div>
 
@@ -588,6 +417,163 @@ function cfgEmails(cfg,keys) {
   return [...new Set(expanded)].map(k=>(cfg&&cfg[k]?cfg[k].email:'')).filter(Boolean);
 }
 
+// ── 동의서 내용 (STK_consent_contents.xlsx) ──
+const CONSENT_FILE = 'STK_consent_contents.xlsx';
+const OPTION_VALUE_MAP = { '동의':'agree', '미동의':'disagree', '해당없음':'na', '확인':'agree' };
+let CONSENT_ITEMS = [];   // [{id, sectionNum, sectionName, order, required, label, sub, options[], allAgreeGroup}]
+let CONSENT_INFOBOX = {}; // itemId -> [{order,label,content}]
+let CONSENT_HEADER = {};  // 항목 -> 내용
+
+async function loadConsentContents() {
+  const t = await getToken();
+  const drivesRes = await api('/sites/' + siteId + '/drives');
+  let docDrive = (drivesRes.value||[]).find(d=>['Documents','문서','Shared Documents'].includes(d.name));
+  if (!docDrive && drivesRes.value) docDrive = drivesRes.value[0];
+  const res = await fetch('https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/'+CONSENT_FILE+':/content',
+    { headers: { Authorization: 'Bearer ' + t } });
+  if (!res.ok) throw new Error(CONSENT_FILE + ' 로드 실패 (' + res.status + ')');
+  const buf = await res.arrayBuffer();
+  const wb = XLSX.read(buf, { type: 'array' });
+
+  // 1_동의항목
+  const s1 = XLSX.utils.sheet_to_json(wb.Sheets['1_동의항목'], { header: 1 });
+  const h1 = s1.findIndex(r => (r[0]||'').toString().trim() === '항목ID');
+  const items = [];
+  for (let i = h1 + 1; i < s1.length; i++) {
+    const row = s1[i];
+    if (!row || !row[0]) continue;
+    items.push({
+      id: row[0].toString().trim(),
+      sectionNum: (row[1]||'').toString().trim(),
+      sectionName: (row[2]||'').toString().trim(),
+      order: Number(row[3]) || 0,
+      required: (row[4]||'').toString().trim(),
+      label: (row[5]||'').toString().trim(),
+      sub: (row[6]||'').toString().trim(),
+      options: (row[7]||'').toString().split(',').map(s=>s.trim()).filter(Boolean),
+      allAgreeGroup: (row[8]||'').toString().trim()
+    });
+  }
+  items.sort((a,b) => Number(a.sectionNum)-Number(b.sectionNum) || a.order-b.order);
+
+  // 2_정보박스_상세
+  const s2 = XLSX.utils.sheet_to_json(wb.Sheets['2_정보박스_상세'], { header: 1 });
+  const h2 = s2.findIndex(r => (r[0]||'').toString().trim() === '항목ID(연결)');
+  const infobox = {};
+  for (let i = h2 + 1; i < s2.length; i++) {
+    const row = s2[i];
+    if (!row || !row[0]) continue;
+    const id = row[0].toString().trim();
+    if (!infobox[id]) infobox[id] = [];
+    infobox[id].push({ order: Number(row[1])||0, label: (row[2]||'').toString().trim(), content: (row[3]||'').toString().trim() });
+  }
+  Object.values(infobox).forEach(arr => arr.sort((a,b)=>a.order-b.order));
+
+  // 3_헤더_안내문구
+  const s3 = XLSX.utils.sheet_to_json(wb.Sheets['3_헤더_안내문구'], { header: 1 });
+  const h3 = s3.findIndex(r => (r[0]||'').toString().trim() === '항목');
+  const header = {};
+  for (let i = h3 + 1; i < s3.length; i++) {
+    const row = s3[i];
+    if (!row || !row[0]) continue;
+    header[row[0].toString().trim()] = (row[1]||'').toString().trim();
+  }
+
+  CONSENT_ITEMS = items;
+  CONSENT_INFOBOX = infobox;
+  CONSENT_HEADER = header;
+}
+
+function esc(s) { return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderConsentForm() {
+  const hdrTitle = document.getElementById('hdr-title-text');
+  const hdrBadge = document.getElementById('hdr-badge-text');
+  const hdrDesc  = document.getElementById('hdr-desc-text');
+  if (hdrTitle && CONSENT_HEADER['페이지 제목']) hdrTitle.textContent = CONSENT_HEADER['페이지 제목'];
+  if (hdrBadge && CONSENT_HEADER['연도 배지']) hdrBadge.textContent = CONSENT_HEADER['연도 배지'];
+  if (hdrDesc && CONSENT_HEADER['상단 안내문구']) hdrDesc.innerHTML = esc(CONSENT_HEADER['상단 안내문구']).replace(/\n/g,'<br>');
+
+  // 섹션 순서대로 그룹핑
+  const sections = [];
+  CONSENT_ITEMS.forEach(item => {
+    let sec = sections.find(s => s.num === item.sectionNum);
+    if (!sec) { sec = { num: item.sectionNum, name: item.sectionName, items: [] }; sections.push(sec); }
+    sec.items.push(item);
+  });
+  sections.sort((a,b) => Number(a.num)-Number(b.num));
+  if (!sections.length) {
+    document.getElementById('sections-container').innerHTML =
+      '<div class="section"><div class="sec-body"><div class="info-box" style="color:#b91c1c">동의 항목 데이터를 불러오지 못했습니다 (' + CONSENT_FILE + ').</div></div></div>';
+    return;
+  }
+  const lastSectionNum = sections[sections.length-1].num;
+  let secCount = 0;
+  let html = '';
+  sections.forEach(sec => {
+    const isLast = sec.num === lastSectionNum;
+    secCount++;
+    const secNumDisplay = isLast ? '✍' : secCount;
+    html += '<div class="section"><div class="sec-hdr"><div class="sec-num">' + secNumDisplay + '</div>'
+      + '<span class="sec-title">' + esc(sec.name) + '</span>'
+      + '<span class="sec-st todo" id="st' + sec.num + '">미완료</span></div><div class="sec-body">';
+
+    sec.items.forEach((item, idx) => {
+      const boxes = CONSENT_INFOBOX[item.id] || [];
+      if (boxes.length) {
+        html += '<div class="info-box">' + boxes.map(b => '<b>' + esc(b.label) + '</b>: ' + esc(b.content)).join('<br>') + '</div>';
+      }
+      const isFinal = isLast && item.options.length === 1;
+      const badgeClass = item.required === '필수' ? 'badge-req' : 'badge-opt';
+      const badgeHtml = (!isFinal && item.required) ? ('<span class="' + badgeClass + '">' + esc(item.required) + '</span>') : '';
+      const subHtml = item.sub ? ('<div class="csub">' + esc(item.sub) + '</div>') : '';
+      const rowStyle = isFinal ? ' style="border-bottom:none"' : '';
+      const labelHtml = isFinal ? ('<b>' + esc(item.label) + '</b>') : (esc(item.label) + badgeHtml + subHtml);
+      const radios = item.options.map(opt => {
+        const val = OPTION_VALUE_MAP[opt] || opt;
+        return '<label><input type="radio" name="' + esc(item.id) + '" value="' + esc(val) + '" onchange="upd()"> ' + esc(opt) + '</label>';
+      }).join('');
+      html += '<div class="c-row"' + rowStyle + '><div class="c-label">' + labelHtml + '</div>'
+        + '<div class="radio-wrap">' + radios + '</div></div>';
+
+      if (item.allAgreeGroup) {
+        const nextItem = sec.items[idx+1];
+        const groupEnds = !nextItem || nextItem.allAgreeGroup !== item.allAgreeGroup;
+        if (groupEnds) {
+          const checkId = 'all_' + item.allAgreeGroup.replace(/[^a-z0-9]/gi,'_');
+          html += '<div class="all-agree" onclick="allAgreeDyn(\'' + item.allAgreeGroup + '\',\'' + checkId + '\')">'
+            + '<input type="checkbox" id="' + checkId + '" onclick="event.stopPropagation();allAgreeDyn(\'' + item.allAgreeGroup + '\',\'' + checkId + '\')">'
+            + '<span class="all-agree-label">' + esc(item.allAgreeGroup) + '항 전체 동의</span></div>';
+        }
+      }
+      if (idx < sec.items.length - 1) html += '<div class="divider"></div>';
+    });
+
+    html += '</div></div>';
+  });
+  document.getElementById('sections-container').innerHTML = html;
+
+  // 서명 패드를 마지막 섹션 내부로 이동
+  const lastSectionEl = document.getElementById('sections-container').lastElementChild;
+  const signEl = document.getElementById('sign-section');
+  if (lastSectionEl && signEl) {
+    const secBody = lastSectionEl.querySelector('.sec-body');
+    secBody.appendChild(signEl);
+    signEl.style.display = '';
+  }
+  const signLabelEl = document.getElementById('sign-label-text');
+  if (signLabelEl && CONSENT_HEADER['서명 안내문구']) signLabelEl.textContent = CONSENT_HEADER['서명 안내문구'];
+}
+
+function allAgreeDyn(groupId, checkId) {
+  const chk = document.getElementById(checkId).checked;
+  CONSENT_ITEMS.filter(i => i.allAgreeGroup === groupId).forEach(item => {
+    const r = document.querySelector('input[name="'+item.id+'"][value="agree"]');
+    if (r) r.checked = chk;
+  });
+  upd();
+}
+
 async function boot(account) {
   user = account;
   document.getElementById('login-screen').style.display = 'none';
@@ -635,6 +621,15 @@ async function boot(account) {
     } catch(e2) { console.warn('driveId 조회 실패:', e2.message); }
     await checkAlreadySubmitted();
   } catch(e) { console.error(e); }
+
+  // 동의 항목 내용(STK_consent_contents.xlsx) 로드 및 렌더링
+  loading(true, '동의서 내용 불러오는 중...');
+  try {
+    await loadConsentContents();
+  } catch(e) {
+    console.warn('[Consent] 내용 로드 실패:', e.message);
+  }
+  renderConsentForm();
   loading(false);
 
   // system_config_final.xlsx 로드 (try 블록 밖에서 독립 실행)
@@ -673,53 +668,51 @@ async function checkAlreadySubmitted() {
 // ── 진행률 ──
 function getVal(name) { const el = document.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : null; }
 function upd() {
-  const names = ['r1','r2','r3','r4','r5','r6','r7','r8','r9','r10'];
+  const names = CONSENT_ITEMS.map(i => i.id);
+  const total = names.length || 1;
   let done = names.filter(n => getVal(n)).length;
-  const pct = Math.round(done / 10 * 100);
+  const pct = Math.round(done / total * 100);
   document.getElementById('prog-fill').style.width = pct + '%';
-  document.getElementById('prog-text').textContent = done + ' / 10 항목 완료';
+  document.getElementById('prog-text').textContent = done + ' / ' + names.length + ' 항목 완료';
   document.getElementById('prog-pct').textContent = pct + '%';
 
-  const s1 = ['r1','r2','r3','r4'].every(n => getVal(n));
-  const s2 = ['r5','r6','r7'].every(n => getVal(n));
-  const s3 = ['r8','r9'].every(n => getVal(n));
-  const s4 = !!getVal('r10');
-  [['st1',s1],['st2',s2],['st3',s3],['st4',s4]].forEach(([id,ok]) => {
-    const el = document.getElementById(id);
-    el.textContent = ok ? '완료' : '미완료';
-    el.className = 'sec-st ' + (ok ? 'done' : 'todo');
+  // 섹션별 완료 상태
+  const secMap = {};
+  CONSENT_ITEMS.forEach(item => { (secMap[item.sectionNum] = secMap[item.sectionNum] || []).push(item.id); });
+  const secNums = Object.keys(secMap).sort((a,b) => Number(a)-Number(b));
+  const lastSecNum = secNums[secNums.length-1];
+  secNums.forEach(secNum => {
+    const ok = secMap[secNum].every(n => getVal(n));
+    const el = document.getElementById('st' + secNum);
+    if (el) { el.textContent = ok ? '완료' : '미완료'; el.className = 'sec-st ' + (ok ? 'done' : 'todo'); }
+    if (secNum === lastSecNum) {
+      const ss = document.getElementById('sign-section');
+      if (ss) {
+        if (ok) { ss.style.opacity = '1'; ss.style.pointerEvents = ''; }
+        else { ss.style.opacity = '.4'; ss.style.pointerEvents = 'none'; }
+      }
+    }
   });
 
-  // 최종 확인 체크 시 서명 패드 활성화
-  const ss = document.getElementById('sign-section');
-  if (s4) { ss.style.opacity = '1'; ss.style.pointerEvents = ''; }
-  else { ss.style.opacity = '.4'; ss.style.pointerEvents = 'none'; }
-
   // 전체 동의 체크박스 상태
-  document.getElementById('all1').checked = ['r1','r2'].every(n => getVal(n) === 'agree');
-  document.getElementById('all2').checked = ['r5','r6'].every(n => getVal(n) === 'agree');
-  document.getElementById('all3').checked = ['r8','r9'].every(n => getVal(n) === 'agree');
+  const groups = {};
+  CONSENT_ITEMS.forEach(item => { if (item.allAgreeGroup) (groups[item.allAgreeGroup] = groups[item.allAgreeGroup] || []).push(item.id); });
+  Object.keys(groups).forEach(g => {
+    const checkId = 'all_' + g.replace(/[^a-z0-9]/gi,'_');
+    const el = document.getElementById(checkId);
+    if (el) el.checked = groups[g].every(n => getVal(n) === 'agree');
+  });
 
   checkSubmitReady();
 }
 function checkSubmitReady() {
-  const allDone = ['r1','r2','r3','r4','r5','r6','r7','r8','r9','r10'].every(n => getVal(n));
+  const allDone = CONSENT_ITEMS.length > 0 && CONSENT_ITEMS.every(i => getVal(i.id));
   const ready = allDone && isSigned;
   const btn = document.getElementById('btn-submit');
   btn.disabled = !ready;
   if (!allDone) btn.textContent = '모든 항목을 완료하고 서명해 주세요';
   else if (!isSigned) btn.textContent = '서명을 완료해 주세요';
   else btn.textContent = '동의서 제출하기';
-}
-function allAgree(n1, n2, checkId) {
-  const chk = document.getElementById(checkId).checked;
-  [n1, n2].forEach(n => { const r = document.querySelector('input[name="'+n+'"][value="agree"]'); if(r) r.checked = chk; });
-  upd();
-}
-function allAgree3() {
-  const chk = document.getElementById('all3').checked;
-  ['r8','r9'].forEach(n => { const r = document.querySelector('input[name="'+n+'"][value="agree"]'); if(r) r.checked = chk; });
-  upd();
 }
 
 // ── 관리자 ──
@@ -1038,20 +1031,8 @@ async function submitForm() {
     }
 
     loading(true, '동의 내역 기록 중...');
-    const labels = {
-      r1:'C1_일반수집이용_필수', r2:'C2_일반수집이용_선택',
-      r3:'C3_고유식별수집이용', r4:'C4_민감정보수집이용',
-      r5:'C5_일반제3자제공_필수', r6:'C6_일반제3자제공_선택',
-      r7:'C7_고유식별제3자제공', r8:'C8_일반국외제공',
-      r9:'C9_고유식별국외제공', r10:'C10_최종확인'
-    };
-    const labelDisplay = {
-      r1:'일반 개인정보 수집·이용(필수)', r2:'일반 개인정보 수집·이용(선택)',
-      r3:'고유식별정보 수집·이용', r4:'민감정보 수집·이용',
-      r5:'일반 개인정보 제3자제공(필수)', r6:'일반 개인정보 제3자제공(선택)',
-      r7:'고유식별정보 제3자제공', r8:'일반 개인정보 국외제공',
-      r9:'고유식별정보 국외제공', r10:'최종 확인'
-    };
+    const labelDisplay = {};
+    CONSENT_ITEMS.forEach(item => { labelDisplay[item.id] = item.label; });
     // 모든 데이터를 Title(제목) 하나에 저장 - 컬럼 추가 불필요
     // Title: 255자 이내 (SharePoint 제한)
     const titleStr = ('[' + _dateStr + '] ' + user.email).substring(0, 255);
