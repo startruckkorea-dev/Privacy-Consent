@@ -338,8 +338,8 @@ window.addEventListener('load', async () => {
 });
 document.getElementById('btn-login').onclick = async () => {
   try {
-    const r = await msalApp.loginPopup({ scopes: SCOPES });
-    msalApp.setActiveAccount(r.account); await boot(r.account);
+    if (window !== window.top) { window.open(window.location.href, '_blank'); return; } // iframe에 임베드된 경우 새 탭에서 열기
+    await msalApp.loginRedirect({ scopes: SCOPES }); // 팝업 대신 리다이렉트 — 모바일 홈화면 바로가기 등에서 팝업이 차단/미지원되는 문제 회피
   } catch(e) { showErr(e.message); }
 };
 function signOut() { msalApp.logoutRedirect(); }
@@ -349,8 +349,8 @@ async function getToken() {
   try { return (await msalApp.acquireTokenSilent({ scopes: SCOPES, account: msalApp.getActiveAccount() })).accessToken; }
   catch(e) {
     if (e.name === 'InteractionRequiredAuthError' || (e.errorCode && e.errorCode.includes('interaction_required'))) {
-      const r = await msalApp.acquireTokenPopup({ scopes: SCOPES });
-      msalApp.setActiveAccount(r.account); return r.accessToken;
+      await msalApp.acquireTokenRedirect({ scopes: SCOPES }); // 팝업 대신 리다이렉트 — 페이지가 다시 로드되며 handleRedirectPromise가 이어받음
+      return null;
     } throw e;
   }
 }
