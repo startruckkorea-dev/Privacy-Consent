@@ -597,7 +597,7 @@ async function boot(account) {
   const snEl = document.getElementById('sign-user-name');
   if (snEl) snEl.textContent = user.displayName || user.email;
   const sdEl = document.getElementById('sign-date');
-  if (sdEl) sdEl.textContent = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
+  if (sdEl) sdEl.textContent = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Seoul'});
 
   loading(true, '데이터 확인 중...');
   try {
@@ -935,9 +935,9 @@ async function submitForm() {
     loading(true, 'PDF 생성 중...');
     let pdfBuf = null;
     let signFileUrl = '';
-    const _dt = new Date(now);
+    const _dt = new Date(new Date(now).getTime() + 9*3600*1000);
     const _pad = n => String(n).padStart(2,'0');
-    const _dateStr = now.substring(0,10) + '-' + _pad(_dt.getHours()) + _pad(_dt.getMinutes());
+    const _dateStr = `${_dt.getUTCFullYear()}-${_pad(_dt.getUTCMonth()+1)}-${_pad(_dt.getUTCDate())}` + '-' + _pad(_dt.getUTCHours()) + _pad(_dt.getUTCMinutes());
     const fileName = 'Consent_' + user.email.replace(/[^a-z0-9]/gi,'_') + '_' + _dateStr + '.pdf';
     try {
       const formEl = document.getElementById('form-body');
