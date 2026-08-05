@@ -844,7 +844,7 @@ function renderAdminTable() {
       let pdfUrl = f.SignatureFileUrl || '';
       if (!pdfUrl && email) {
         const safeName = email.replace(/[^a-z0-9]/gi, '_');
-        const dateStr = dateFromTitle || new Date().toISOString().substring(0,10);
+        const dateStr = dateFromTitle || new Date(new Date().getTime()+9*3600*1000).toISOString().substring(0,10);
         pdfUrl = 'https://startruckkorea.sharepoint.com/sites/STK-DB/AttachedFiles/PrivacyConsents_AttachedFiles/Signatures/Consent_' + safeName + '_' + dateStr + '.pdf';
       }
 
