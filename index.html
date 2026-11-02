@@ -257,6 +257,7 @@ canvas#sig-canvas{display:block;touch-action:none}
         <button onclick="loadAdminData()" style="background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:7px 16px;font-size:.78rem;color:#64748b;cursor:pointer;font-family:inherit;white-space:nowrap">새로고침</button>
         <button onclick="hideAdmin()" style="background:#0078d4;color:#fff;border:none;border-radius:20px;padding:7px 16px;font-size:.78rem;cursor:pointer;font-family:inherit;white-space:nowrap">닫기</button>
       </div>
+      <div id="admin-count" style="font-size:.74rem;color:#94a3b8;margin:0 2px 8px"></div>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead><tr>
@@ -747,13 +748,15 @@ function hideAdmin() {
   document.getElementById('form-body').style.display = 'block';
 }
 
-async function downloadPdf(unused, dlFileName) {
+async function downloadPdf(fileId, dlFileName) {
   try {
     const t = await getToken();
     const dPath = 'https://graph.microsoft.com/v1.0/drives/' + driveId;
     // 폴더 ID 기반 다운로드 (경로 파싱 문제 우회)
     let dlUrl;
-    if (window._signaturesFolderId) {
+    if (fileId) {   // 11-02 관리자 표 — 서명 파일 목록에서 온 ID
+      dlUrl = 'https://graph.microsoft.com/v1.0/drives/' + driveId + '/items/' + encodeURIComponent(fileId) + '/content';
+    } else if (window._signaturesFolderId) {
       dlUrl = 'https://graph.microsoft.com/v1.0/sites/' + siteId + '/drives/' + driveId + '/items/' + window._signaturesFolderId + ':/' + encodeURIComponent(dlFileName) + ':/content';
     } else {
       dlUrl = 'https://graph.microsoft.com/v1.0/sites/' + siteId + '/drives/' + driveId + '/root:/PrivacyConsents_AttachedFiles/Signatures/' + encodeURIComponent(dlFileName) + ':/content';
@@ -775,45 +778,90 @@ let _adminAllItems = [];
 let _adminPage = 1;
 const ADMIN_PAGE_SIZE = 20;
 
+// 11-02 관리자 표에 본인 제출 건만 보이던 문제 —
+//   PrivacyConsents 목록은 개인정보라 「본인이 만든 항목만 읽기」 로 묶여 있으면 관리자도(목록 관리 권한이 없으면) 자기 건만 받는다.
+//   그래서 서명 PDF 폴더(PrivacyConsents_AttachedFiles/Signatures)의 파일 목록도 함께 읽어 합친다 — 파일마다 올린 사람 · 올린 시각이 있다.
+//   같은 제출은 파일 이름(Consent_<메일>_<제출일시>.pdf)으로 한 줄로 묶는다. 목록에만 있는 건(업로드 실패 등)도 그대로 보인다.
+function _escH(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function _safeMail(e) { return String(e || '').replace(/[^a-z0-9]/gi, '_'); }
+// 제출일시 키 「2026-05-06-0958」(KST) 또는 예전 「2026-05-06」 → 시각(ms). 시각이 없으면 그날 0시
+function _keyToMs(k) {
+  const m = String(k || '').match(/^(\d{4})-(\d{2})-(\d{2})(?:-(\d{2})(\d{2}))?$/);
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], (+m[4] || 0) - 9, +m[5] || 0) : 0;
+}
+// 표시: 2026-05-06 09:58 (KST). 시각을 모르는 예전 건은 날짜만
+function _fmtKst(ms, dateOnly) {
+  if (!ms) return '-';
+  const d = new Date(ms + 9 * 3600 * 1000), p = n => String(n).padStart(2, '0');
+  const day = d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate());
+  return dateOnly ? day : day + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+}
+async function _graphAll(url) {
+  const out = []; let next = url.startsWith('http') ? url : GRAPH + url;
+  while (next) {
+    const t = await getToken();
+    const res = await fetch(next, { headers: { Authorization: 'Bearer ' + t } });
+    if (!res.ok) { let msg = res.status; try { msg = (await res.json())?.error?.message || msg; } catch (e) {} throw new Error(msg); }
+    const j = await res.json(); out.push(...(j.value || [])); next = j['@odata.nextLink'] || null;
+  }
+  return out;
+}
+async function _loadSignatureFiles() {
+  if (!driveId) throw new Error('문서 라이브러리를 찾지 못했습니다');
+  const base = window._signaturesFolderId ? '/drives/' + driveId + '/items/' + window._signaturesFolderId + '/children'
+                                          : '/drives/' + driveId + '/root:/PrivacyConsents_AttachedFiles/Signatures:/children';
+  return (await _graphAll(base + '?$select=id,name,createdDateTime,createdBy,file&$top=999')).filter(f => f.file && /^Consent_.+\.pdf$/i.test(f.name || ''));
+}
+
 async function loadAdminData() {
   const tbody = document.getElementById('admin-tbody');
   tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">불러오는 중...</td></tr>';
-  try {
-    const res = await api('/sites/' + siteId + '/lists/' + LIST_NAME + '/items?$expand=fields&$top=500');
-    const items = res.value || [];
-    if (!items.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">제출된 동의서가 없습니다</td></tr>';
-      return;
-    }
-    // 최신순 정렬
-    items.sort((a, b) => {
-      // SubmittedAt 있으면 날짜 비교, 없으면 SP 아이템 ID(생성순) 비교
-      const da = a.fields.SubmittedAt ? new Date(a.fields.SubmittedAt).getTime() : (a.id || 0);
-      const db = b.fields.SubmittedAt ? new Date(b.fields.SubmittedAt).getTime() : (b.id || 0);
-      return db - da;
-    });
-    _adminAllItems = items;
-    _adminPage = 1;
-    renderAdminTable();
-    return;
-  } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">오류: ' + e.message + '</td></tr>';
-    return;
+  const [lr, fr] = await Promise.all([
+    _graphAll('/sites/' + siteId + '/lists/' + LIST_NAME + '/items?$expand=fields&$top=999').then(v => ({ v }), e => ({ e })),
+    _loadSignatureFiles().then(v => ({ v }), e => ({ e })),
+  ]);
+  if (lr.e && fr.e) { tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">오류: ' + _escH(lr.e.message) + '</td></tr>'; return; }
+  const rows = new Map();   // 파일 이름(소문자) → 한 줄
+  // 1) 목록 — Title 「[2026-05-06-0958] mail@…」
+  for (const it of (lr.v || [])) {
+    const f = it.fields || {};
+    const tm = String(f.Title || '').match(/^\[([^\]]+)\]\s*([^\s|]+)/);
+    const key = tm ? tm[1].trim() : '', mail = String(f.EmployeeEmail || (tm ? tm[2] : '') || '').trim().toLowerCase();
+    const fileName = 'Consent_' + _safeMail(mail) + '_' + key + '.pdf';
+    const at = f.SubmittedAt ? Date.parse(f.SubmittedAt) : (_keyToMs(key) || Date.parse(it.createdDateTime || '') || 0);
+    rows.set(fileName.toLowerCase(), { name: f.EmployeeName || '', email: mail, at, dateOnly: !f.SubmittedAt && /^\d{4}-\d{2}-\d{2}$/.test(key), fileName, fileId: '', fromList: true });
   }
+  // 2) 서명 파일 — 올린 사람 이름 · 메일 · 올린 시각
+  const bySafe = {}; rows.forEach(r => { if (r.email) bySafe[_safeMail(r.email).toLowerCase()] = r.email; });
+  for (const fl of (fr.v || [])) {
+    const m = fl.name.match(/^Consent_(.+)_(\d{4}-\d{2}-\d{2}(?:-\d{4})?)\.pdf$/i);
+    const u = (fl.createdBy && fl.createdBy.user) || {};
+    const k = fl.name.toLowerCase(), cur = rows.get(k);
+    const mail = String(u.email || (m && bySafe[m[1].toLowerCase()]) || '').toLowerCase();
+    if (cur) { cur.fileId = fl.id; if (!cur.name && u.displayName) cur.name = u.displayName; if (!cur.email && mail) cur.email = mail; continue; }
+    const at = Date.parse(fl.createdDateTime || '') || (m ? _keyToMs(m[2]) : 0);
+    rows.set(k, { name: u.displayName || '', email: mail, at, dateOnly: false, fileName: fl.name, fileId: fl.id, fromList: false });
+  }
+  // 이름이 없는 줄은 같은 메일의 다른 줄(서명 파일)에서 이름을 빌린다
+  const nameOf = {}; rows.forEach(r => { if (r.name && r.email) nameOf[r.email] = r.name; });
+  rows.forEach(r => { if (!r.name) r.name = nameOf[r.email] || (r.email ? r.email.split('@')[0] : '-'); });
+  _adminAllItems = [...rows.values()].sort((a, b) => (b.at || 0) - (a.at || 0));
+  _adminNote = fr.e ? '서명 파일 폴더를 읽지 못해 목록 기준으로만 표시합니다 (' + fr.e.message + ')'
+             : lr.e ? '동의 목록을 읽지 못해 서명 파일 기준으로만 표시합니다 (' + lr.e.message + ')' : '';
+  _adminPage = 1;
+  renderAdminTable();
 }
+let _adminNote = '';
 
 function renderAdminTable() {
   const tbody = document.getElementById('admin-tbody');
   const pgDiv = document.getElementById('admin-pagination');
   const q = (document.getElementById('admin-search')?.value || '').toLowerCase();
   const filtered = q
-    ? _adminAllItems.filter(item => {
-        const f = item.fields;
-        const name = (f.EmployeeName || '').toLowerCase();
-        const email = (f.EmployeeEmail || f.Title || '').toLowerCase();
-        return name.includes(q) || email.includes(q);
-      })
+    ? _adminAllItems.filter(r => (r.name || '').toLowerCase().includes(q) || (r.email || '').toLowerCase().includes(q))
     : _adminAllItems;
+  const cnt = document.getElementById('admin-count');
+  if (cnt) cnt.textContent = '총 ' + filtered.length + '건' + (q ? ' (전체 ' + _adminAllItems.length + '건)' : '') + (_adminNote ? ' · ' + _adminNote : '');
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
@@ -822,42 +870,19 @@ function renderAdminTable() {
   const pageItems = filtered.slice(start, start + ADMIN_PAGE_SIZE);
 
   if (!pageItems.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">검색 결과가 없습니다</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="admin-empty">' + (_adminAllItems.length ? '검색 결과가 없습니다' : '제출된 동의서가 없습니다') + '</td></tr>';
     pgDiv.innerHTML = '';
     return;
   }
   let rows = '';
-  for (const item of pageItems) {
-      const f = item.fields;
-      // Title에서 이메일/이름 파싱 (ConsentDetail 없을 경우 대비)
-      // Title 형식: "[2026-04-28] email@domain.com"
-      const titleStr = f.Title || '';
-      const titleMatch = titleStr.match(/^\[([^\]]+)\]\s*([^\s|]+)/);
-      const dateFromTitle = titleMatch ? titleMatch[1] : '';
-      const emailFromTitle = titleMatch ? titleMatch[2].trim() : '';
-      const name = f.EmployeeName || emailFromTitle.split('@')[0] || '-';
-      const email = f.EmployeeEmail || emailFromTitle || '-';
-      const dt = f.SubmittedAt
-        ? new Date(f.SubmittedAt).toLocaleString('ko-KR')
-        : (dateFromTitle || '-');
-      // SignatureFileUrl 없으면 이메일로 파일명 조합 (기존 데이터 대응)
-      let pdfUrl = f.SignatureFileUrl || '';
-      if (!pdfUrl && email) {
-        const safeName = email.replace(/[^a-z0-9]/gi, '_');
-        const dateStr = dateFromTitle || new Date(new Date().getTime()+9*3600*1000).toISOString().substring(0,10);
-        pdfUrl = 'https://startruckkorea.sharepoint.com/sites/STK-DB/AttachedFiles/PrivacyConsents_AttachedFiles/Signatures/Consent_' + safeName + '_' + dateStr + '.pdf';
-      }
-
-      const dtShort = dt !== '-' ? dt.replace(/^\d{4}\. /,'').replace(/\. /,'/').replace(/\.$/,'') : '-';
-      const safeName = email.replace(/[^a-z0-9]/gi,'_');
-      const fileName = 'Consent_' + safeName + '_' + dateFromTitle + '.pdf';
-
-      rows += `<tr>
-        <td style="font-weight:600">${name||'-'}</td>
-        <td style="color:#64748b">${email||'-'}</td>
-        <td style="font-size:.75rem;color:#94a3b8;white-space:nowrap">${dtShort}</td>
-        <td style="text-align:center">${pdfUrl
-          ? `<button class="admin-pdf-link" onclick="downloadPdf('',this.dataset.fn)" data-fn="${fileName}">⬇ 다운로드</button>`
+  for (const r of pageItems) {
+      const canDl = !!(r.fileId || r.fromList);
+      rows += `<tr data-row="${_escH(r.email)}">
+        <td style="font-weight:600">${_escH(r.name || '-')}</td>
+        <td style="color:#64748b">${_escH(r.email || '-')}</td>
+        <td style="font-size:.78rem;color:#64748b;white-space:nowrap;font-variant-numeric:tabular-nums">${_fmtKst(r.at, r.dateOnly)}</td>
+        <td style="text-align:center">${canDl
+          ? `<button class="admin-pdf-link" onclick="downloadPdf(this.dataset.id,this.dataset.fn)" data-id="${_escH(r.fileId)}" data-fn="${_escH(r.fileName)}">⬇ 다운로드</button>`
           : '<span style="color:#cbd5e0;font-size:.72rem">없음</span>'
         }</td>
       </tr>`;
