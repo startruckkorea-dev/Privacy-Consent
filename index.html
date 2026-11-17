@@ -164,20 +164,24 @@ canvas#sig-canvas{display:block;touch-action:none}
 <div id="app">
   <div class="topnav">
     <div class="nav-brand">
-      <div class="nav-icon">🖊️</div>
+      <div class="nav-icon"><svg class="pc-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
       <div>
         <div class="nav-title">STK 개인정보 동의서</div>
         <div id="pc-contact-email" style="font-size:.62rem;color:rgba(255,255,255,.55);margin-top:1px">문의: (로딩중...)</div>
       </div>
     </div>
     <div class="nav-right">
-      <div class="nav-user">
+      <button type="button" class="nav-tl nav-admin-btn" id="nav-admin-btn" onclick="showAdmin()" title="관리자 화면"><svg class="pc-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg><span>관리자</span></button>
+      <a class="nav-tl" href="https://hs-aps.startruckkorea.com/" target="_self" title="HS APS 통합 결재함으로"><svg class="pc-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg><span>HS APS</span></a>
+      <span class="nav-vsep" aria-hidden="true"></span>
+      <div class="nav-user" id="nav-user" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" title="계정">
         <div class="nav-avatar" id="nav-avatar">?</div>
-        <span class="nav-name" id="nav-name"></span>
+        <span class="nav-name" id="nav-name"></span><span class="nav-ch" aria-hidden="true">▾</span>
+        <div class="pc-acct-menu" id="pc-acct-menu" role="menu" hidden>
+          <div class="mh"><span class="av" id="pc-acct-av" aria-hidden="true"></span><span class="who"><span class="nm" id="pc-acct-nm"></span><span class="ml" id="pc-acct-ml"></span></span></div>
+          <button type="button" class="pc-acct-lo" id="pc-acct-lo" role="menuitem"><svg class="pc-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>로그아웃</button>
+        </div>
       </div>
-      <button class="nav-admin-btn" id="nav-admin-btn" onclick="showAdmin()">관리자</button>
-      <a href="https://aps.startruckkorea.com/" target="_self" title="STK 통합 결재함" style="text-decoration:none;display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:20px;padding:5px 13px;font-size:.72rem;font-weight:600;font-family:inherit;transition:all .15s" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'"><span style="font-size:.9rem;line-height:1">📬</span><span>돌아가기</span></a>
-      <button class="btn-out" onclick="signOut()">로그아웃</button>
     </div>
   </div>
 
@@ -591,9 +595,11 @@ async function boot(account) {
   // account 정보도 user에 복사 (isAdmin에서 참조)
   user.username = (account.username || '').toLowerCase();
   user.idTokenClaims = account.idTokenClaims || {};
-  const initials = (user.displayName || '?').split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase();
+  // 11-17 머리글(시안 1 · HS APS 처럼) — 짧은 이름(괄호 안 영문 이름이 있으면 그것) · 이니셜도 그 이름으로
+  const _m = /\(([^()]+)\)\s*$/.exec(user.displayName || ''), shortName = (_m ? _m[1] : user.displayName || user.email || '').trim();
+  const initials = (shortName || '?').split(/\s+/).filter(Boolean).map(w => w[0]).join('').substring(0,2).toUpperCase();
   document.getElementById('nav-avatar').textContent = initials;
-  document.getElementById('nav-name').textContent = user.displayName;
+  document.getElementById('nav-name').textContent = shortName;
   // 서명 섹션 성명/일자 업데이트
   const snEl = document.getElementById('sign-user-name');
   if (snEl) snEl.textContent = user.displayName || user.email;
@@ -657,7 +663,7 @@ async function boot(account) {
     user.idTokenClaims?.upn,
   ].map(v=>(v||'').toLowerCase()).filter(Boolean);
   if (ADMIN_EMAILS.some(e => _adminCandidates.includes(e.toLowerCase()))) {
-    document.getElementById('nav-admin-btn').style.display = 'block';
+    document.getElementById('nav-admin-btn').style.display = 'inline-flex';
   }
   initCanvas();
 }
@@ -1122,6 +1128,121 @@ async function submitForm() {
   loading(false);
 }
 
+</script>
+<style id="pc-head-css">
+/* 11-17 머리글 시안 1(HS APS 머리 줄) — 글자 단추(관리자 · HS APS) | 사진 + 짧은 이름 ▾ → 계정 메뉴(전체 이름 · 메일 · 로그아웃) */
+.topnav{height:56px}
+.nav-brand{gap:10px;min-width:0}
+.nav-icon{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.14);color:#fff;font-size:0}
+.nav-title{font-size:.92rem;letter-spacing:-.01em}
+.pc-i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.nav-right{gap:4px}
+.nav-tl{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:rgba(255,255,255,.88);font-size:.78rem;font-weight:500;font-family:inherit;text-decoration:none;cursor:pointer;white-space:nowrap;transition:background .15s}
+.nav-tl:hover{background:rgba(255,255,255,.12);color:#fff}
+.nav-tl:focus-visible{outline:2px solid #7cc4ff;outline-offset:1px}
+.nav-admin-btn.nav-tl{display:none}
+.nav-vsep{width:1px;height:20px;background:rgba(255,255,255,.22);margin:0 8px 0 6px}
+.nav-user{position:relative;display:inline-flex;align-items:center;gap:8px;padding:3px 9px 3px 3px;border:1px solid transparent;border-radius:999px;background:transparent;cursor:pointer;user-select:none;transition:background .15s,border-color .15s}
+.nav-user:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)}
+.nav-user[aria-expanded="true"]{background:rgba(255,255,255,.14);border-color:rgba(124,196,255,.7);box-shadow:0 0 0 3px rgba(124,196,255,.2)}
+.nav-user:focus-visible{outline:2px solid #7cc4ff;outline-offset:2px}
+.nav-avatar{width:28px;height:28px;font-size:.66rem;flex:none;background-size:cover;background-position:center;background-repeat:no-repeat}
+.nav-avatar.has-photo{color:transparent;background-color:#fff;box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}
+.nav-name{font-size:.8rem;font-weight:600;color:#fff;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}
+.nav-ch{font-size:9px;color:#fff;opacity:.75}
+.pc-acct-menu{position:absolute;right:0;top:calc(100% + 8px);width:300px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #e1dfdd;border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:6px;z-index:200;text-align:left;color:#201f1e;cursor:default;font-size:12.5px}
+.pc-acct-menu[hidden]{display:none}
+.pc-acct-menu .mh{display:flex;gap:10px;align-items:center;padding:8px 10px 10px;border-bottom:1px solid #f0efed;margin-bottom:4px;min-width:0}
+.pc-acct-menu .av{flex:none;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#60a5fa,#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;background-size:cover;background-position:center}
+.pc-acct-menu .av.has-photo{color:transparent;background:#fff center/cover no-repeat;box-shadow:0 0 0 1px #e1dfdd}
+.pc-acct-menu .who{display:flex;flex-direction:column;min-width:0;line-height:1.4}
+.pc-acct-menu .nm{font-weight:600;color:#323130;overflow-wrap:anywhere}
+.pc-acct-menu .ml{font-size:11px;color:#8a8886;overflow-wrap:anywhere}
+.pc-acct-lo{appearance:none;cursor:pointer;width:100%;display:flex;align-items:center;gap:8px;padding:8px 10px;border:0;border-radius:7px;background:#fff;color:#a4262c;font-size:12.5px;font-weight:600;font-family:inherit;text-align:left}
+.pc-acct-lo:hover,.pc-acct-lo:focus-visible{background:#fdf3f4;outline:none}
+@media (max-width:640px){
+  .topnav{padding:0 12px}
+  .nav-tl span,.nav-name{display:none}
+  .nav-tl{padding:0 8px}
+  .nav-vsep{margin:0 4px}
+  .nav-title{font-size:.84rem}
+}
+</style>
+<script id="pc-head-js">
+/* 11-17 머리글 시안 1 — ① 내 사진: HS APS 와 같은 원본(STK-DB 문서 라이브러리 맨 위 employee_photos.json — HFS 가 Flex 사진 96×96)에서 내 메일 것만.
+   이 브라우저에 내 것 하나만 기억(localStorage pc.photo.v1 = { me, tag, img }) — 파일이 그대로면(cTag) 다시 받지 않음 · 없거나 못 읽으면 이니셜.
+   ② 계정 메뉴: 사진 · 이름을 누르면 전체 이름 · 메일 · 로그아웃(HS APS 처럼). 메뉴 밖 · Esc 로 닫힘, Enter · Space · ↓ 로 열림. */
+(function () {
+  'use strict';
+  var LS = 'pc.photo.v1', PHOTO = 'employee_photos.json', RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
+  var $ = function (id) { return document.getElementById(id); };
+  var box = $('nav-user'), dot = $('nav-avatar'), menu = $('pc-acct-menu');
+  if (!box || !dot || !menu) return;
+  function setAv(img) {
+    [dot, $('pc-acct-av')].forEach(function (el) { if (!el) return; el.style.backgroundImage = img ? 'url("' + img + '")' : ''; el.classList.toggle('has-photo', !!img); });
+  }
+  function lsGet() { try { return JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) { return null; } }
+  function lsSet(v) { try { if (v) localStorage.setItem(LS, JSON.stringify(v)); else localStorage.removeItem(LS); } catch (e) {} }
+  function acct() { return (typeof user !== 'undefined' && user) || null; }
+  function myMails() {
+    var a = acct() || {}, c = a.idTokenClaims || {}, out = [];
+    [a.email, a.username, c.email, c.preferred_username].forEach(function (x) {
+      x = String(x || '').trim().toLowerCase(); if (!x || out.indexOf(x) >= 0) return; out.push(x);
+      var m = x.match(/^(.+)#ext#@/i); if (m) { var i = m[1].lastIndexOf('_'); if (i > 0) { var e = m[1].slice(0, i) + '@' + m[1].slice(i + 1); if (out.indexOf(e) < 0) out.push(e); } }   // 게스트 UPN → 메일
+    });
+    return out.filter(function (x) { return /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(x); });
+  }
+  async function docDrive() {
+    var r = await api('/sites/' + siteId + '/drives');
+    var d = (r.value || []).find(function (x) { return ['Documents', '문서', 'Shared Documents'].indexOf(x.name) >= 0; }) || (r.value || [])[0];
+    return d ? d.id : '';
+  }
+  async function loadPhoto(me, c) {
+    if (!me.length) return;
+    try {
+      var d = await docDrive(); if (!d) return;
+      var t = await getToken(); if (!t) return;
+      var mr = await fetch(GRAPH + '/drives/' + d + '/root:/' + PHOTO + '?$select=id,cTag,eTag', { headers: { Authorization: 'Bearer ' + t }, cache: 'no-store' });
+      if (mr.status === 404) { lsSet(null); setAv(null); return; }
+      if (!mr.ok) return;
+      var meta = await mr.json(), tag = meta.cTag || meta.eTag || '';
+      if (c && me.indexOf(c.me) >= 0 && c.tag === tag) return;   // 파일이 그대로면 다시 받지 않음
+      var cr = await fetch(GRAPH + '/drives/' + d + '/items/' + encodeURIComponent(meta.id) + '/content', { headers: { Authorization: 'Bearer ' + t }, cache: 'no-store' });
+      if (!cr.ok) return;
+      var j = await cr.json(), u = j && j.v === 1 && j.users && typeof j.users === 'object' ? j.users : {};
+      var low = {}; Object.keys(u).forEach(function (k) { low[String(k).toLowerCase()] = u[k]; });
+      var key = me.find(function (k) { return typeof low[k] === 'string' && RE.test(low[k]); });
+      if (key) { lsSet({ me: key, tag: tag, img: low[key] }); setAv(low[key]); } else { lsSet({ me: me[0], tag: tag, img: '' }); setAv(null); }
+    } catch (e) { console.warn('[개인정보 동의서] 계정 사진을 읽지 못함(이니셜로 표시):', e && e.message); }
+  }
+  // 첫 그림부터 사진 — 기억해 둔 내 사진을 화면이 이름을 넣는 순간 먼저 입히고, 파일이 바뀌었는지는 사이트를 알게 된 뒤 확인
+  var c0 = lsGet(); if (c0 && RE.test(c0.img || '')) { try { var pre = new Image(); pre.src = c0.img; } catch (e) {} }
+  var shown = false, fetched = false, iv = 0, mo = null;
+  function tick() {
+    var a = acct(); if (!a || !a.email) return;
+    var me = myMails();
+    if (!shown) { shown = true; var c = lsGet(); if (c && me.indexOf(c.me) >= 0 && RE.test(c.img || '')) setAv(c.img); else if (c && me.indexOf(c.me) < 0) lsSet(null); }   // 다른 계정의 기억은 지움
+    if (!fetched && typeof siteId !== 'undefined' && siteId) { fetched = true; clearInterval(iv); if (mo) mo.disconnect(); loadPhoto(me, lsGet()); }
+  }
+  if (window.MutationObserver) { mo = new MutationObserver(tick); mo.observe($('nav-name') || dot, { childList: true, characterData: true, subtree: true }); }
+  var tries = 0; iv = setInterval(function () { tick(); if (++tries > 240) clearInterval(iv); }, 400);
+  // 계정 메뉴
+  var lo = $('pc-acct-lo');
+  function fill() {
+    var a = acct() || {};
+    $('pc-acct-nm').textContent = a.displayName || a.name || ($('nav-name') || {}).textContent || '';
+    $('pc-acct-ml').textContent = a.email || a.username || '';
+    var av = $('pc-acct-av'); if (av && !av.classList.contains('has-photo')) av.textContent = (dot.textContent || '').trim();
+  }
+  function place() { menu.style.left = ''; menu.style.right = ''; var br = box.getBoundingClientRect(), w = menu.offsetWidth, L = Math.min(Math.max(br.right - w, 8), Math.max(8, innerWidth - w - 8)); menu.style.right = 'auto'; menu.style.left = Math.round(L - br.left) + 'px'; }
+  function open() { fill(); menu.hidden = false; place(); box.setAttribute('aria-expanded', 'true'); setTimeout(function () { document.addEventListener('click', onDoc); document.addEventListener('keydown', onKey, true); }, 0); }
+  function close(focus) { menu.hidden = true; box.setAttribute('aria-expanded', 'false'); document.removeEventListener('click', onDoc); document.removeEventListener('keydown', onKey, true); if (focus) box.focus(); }
+  function onDoc(e) { if (!box.contains(e.target)) close(false); }
+  function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); close(true); } }
+  box.addEventListener('click', function (e) { if (menu.contains(e.target)) return; menu.hidden ? open() : close(false); });
+  box.addEventListener('keydown', function (e) { if (e.target !== box) return; if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') { e.preventDefault(); if (menu.hidden) { open(); lo.focus(); } else close(true); } });
+  lo.addEventListener('click', function () { lsSet(null); close(false); try { signOut(); } catch (e) { console.warn('[개인정보 동의서] 로그아웃 실패:', e && e.message); } });
+})();
 </script>
 </body>
 <!-- redeploy3 -->
